@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YourRide - Captain App</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b1329; color: #f8fafc; padding-bottom: 28px; }
+
+    /* Header & Side Drawer */
+    .header { background: #0f172a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 600; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .menu-btn { background: #1e293b; border: 1px solid #334155; color: #ffffff; font-size: 20px; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+    .menu-dot { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid #0f172a; }
+    .brand { font-size: 18px; font-weight: 900; color: #fff; }
+    .brand span { color: #06b6d4; }
+    .cap-id-pill { background: #0e7490; color: #ecfeff; font-size: 10.5px; font-weight: 900; padding: 4px 8px; border-radius: 20px; border: 1px solid #22d3ee; }
+    .btn-home-top { background: #1e293b; border: 1px solid #475569; color: #f8fafc; font-size: 10.5px; font-weight: 800; padding: 5px 8px; border-radius: 6px; text-decoration: none; }
+
+    .drawer-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.78); z-index: 2000; }
+    .side-drawer {
+      position: fixed; top: 0; left: -350px; width: 338px; max-width: 92vw; height: 100%;
+      background: #0f172a; border-right: 1px solid #334155; z-index: 2001;
+      padding: 16px 13px 30px; transition: left 0.25s ease; overflow-y: auto;
+    }
+    .side-drawer.open { left: 0; }
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #1e293b; }
+    .drawer-close { background: #1e293b; border: none; color: #fff; font-size: 18px; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
+
+    .my-id-card { background: linear-gradient(135deg, #0e7490 0%, #0f172a 100%); border: 1.5px solid #22d3ee; border-radius: 10px; padding: 11px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .drawer-card { background: #1e293b; border-radius: 10px; padding: 11px; margin-bottom: 10px; border: 1px solid #334155; }
+    .kyc-status { font-size: 12.5px; font-weight: 800; margin-bottom: 3px; }
+    .kyc-verified { color: #10b981; }
+    .kyc-pending { color: #f59e0b; }
+    .drawer-sub { font-size: 10.5px; color: #94a3b8; margin-bottom: 8px; }
+    .btn-drawer-full { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 11.5px; font-weight: 800; color: #fff; cursor: pointer; }
+
+    /* 4-Level Captain Network Tree Styles */
+    .drawer-net-section { background: #0b1329; border: 1.5px solid #0e7490; border-radius: 10px; padding: 11px; margin-bottom: 10px; }
+    .level-pills-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 8px 0; text-align: center; }
+    .lvl-pill-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 5px 2px; cursor: pointer; }
+    .lvl-pill-title { font-size: 9px; color: #94a3b8; font-weight: 800; }
+    .lvl-pill-rate { font-size: 10px; color: #4ade80; font-weight: 900; }
+    .lvl-pill-cnt { font-size: 9.5px; color: #fde047; font-weight: 700; }
+    .lvl-filter-strip { display: flex; gap: 4px; margin-bottom: 8px; }
+    .lvl-fbtn { flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-size: 10px; font-weight: 800; padding: 5px 2px; border-radius: 5px; cursor: pointer; }
+    .lvl-fbtn.active { background: #0284c7; color: #fff; border-color: #38bdf8; }
+    .dnet-search { width: 100%; background: #1e293b; border: 1px solid #475569; color: #ffffff; padding: 7px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; outline: none; margin-bottom: 8px; }
+    .tree-sub-item { background: #0f172a; border: 1px solid #1e293b; border-left: 3px solid #06b6d4; border-radius: 7px; padding: 8px 9px; margin-bottom: 6px; font-size: 11px; }
+    .lvl-tag { display: inline-block; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 4px; background: #0e7490; color: #fff; margin-right: 4px; }
+    .member-id-badge { display: inline-block; background: #1e293b; color: #f59e0b; border: 1px solid #475569; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; }
+    .tree-metrics-row { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 4px 7px; border-radius: 5px; margin-top: 5px; font-size: 10px; }
+
+    /* Go Home Drawer Card */
+    .go-home-drawer-card {
+      background: linear-gradient(135deg, #3b0764 0%, #1e1b4b 100%);
+      border: 1.5px solid #c084fc; border-radius: 10px; padding: 11px; margin-bottom: 10px;
+    }
+    .home-search-wrap { display: flex; gap: 6px; margin-top: 6px; position: relative; }
+    .home-loc-input {
+      flex: 1; background: #0f172a; border: 1.5px solid #a855f7; color: #fff;
+      padding: 8px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 700; outline: none;
+    }
+    .btn-home-gps { background: #9333ea; border: none; color: #fff; border-radius: 7px; padding: 0 11px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    .home-suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; background: #0f172a;
+      border: 1.5px solid #c084fc; border-radius: 8px; margin-top: 3px;
+      max-height: 160px; overflow-y: auto; z-index: 3000; display: none;
+    }
+    .home-sug-item { padding: 8px 10px; border-bottom: 1px solid #1e293b; font-size: 11.5px; color: #f8fafc; cursor: pointer; font-weight: 700; }
+
+    .container { padding: 13px 16px; max-width: 540px; margin: 0 auto; }
+    .hq-banner { display: none; background: linear-gradient(90deg, #0e7490 0%, #1e293b 100%); border: 1.5px solid #06b6d4; color: #ecfeff; padding: 9px 12px; border-radius: 9px; font-size: 11.5px; font-weight: 800; margin-bottom: 12px; line-height: 1.4; }
+    .expiry-alert-banner { display: none; background: #7f1d1d; border: 1.5px solid #ef4444; color: #fecaca; padding: 10px 12px; border-radius: 9px; font-size: 11.5px; font-weight: 800; margin-bottom: 12px; line-height: 1.4; }
+
+    .hq-pending-lock-card {
+      display: none; background: linear-gradient(135deg, #78350f 0%, #1e293b 100%);
+      border: 2px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 12px; text-align: center;
+    }
+
+    .go-home-active-banner {
+      display: none; background: linear-gradient(90deg, #581c87 0%, #311042 100%);
+      border: 1.5px solid #d8b4fe; color: #f3e8ff; padding: 10px 12px; border-radius: 10px;
+      margin-bottom: 12px; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .btn-stop-home { background: #ef4444; color: #fff; border: none; padding: 5px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+
+    /* Wallet & ₹1/Day Pass Card */
+    .wallet-card { background: linear-gradient(135deg, #0e3b43 0%, #0f172a 100%); border: 1.5px solid #06b6d4; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .w-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .w-bal { font-size: 26px; font-weight: 900; color: #4ade80; }
+    .pass-badge { background: #059669; color: #fff; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 20px; }
+    .pass-badge.expired { background: #dc2626; }
+    .w-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-w { padding: 10px; border-radius: 8px; border: none; font-size: 12px; font-weight: 900; cursor: pointer; }
+    .btn-recharge { background: #06b6d4; color: #0b1329; }
+    .btn-pass { background: #f59e0b; color: #0b1329; }
+
+    /* Live Duty Toggle & Stats */
+    .duty-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 13px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .btn-duty { padding: 10px 18px; border-radius: 20px; border: none; font-size: 13px; font-weight: 900; cursor: pointer; }
+    .duty-on { background: #10b981; color: #0b1329; }
+    .duty-off { background: #ef4444; color: #fff; }
+
+    .stats-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; text-align: center; }
+    .stat-box { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 9px 6px; }
+    .stat-lbl { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; }
+    .stat-val { font-size: 16px; font-weight: 900; color: #fff; margin-top: 2px; }
+
+    /* Live Map Box */
+    .map-wrapper { border-radius: 12px; overflow: hidden; border: 1.5px solid #334155; margin-bottom: 12px; background: #1e293b; }
+    .map-container { height: 210px; position: relative; z-index: 1; }
+    #captainMap { width: 100%; height: 100%; }
+    .map-relocate-btn {
+      position: absolute; bottom: 24px; right: 12px; z-index: 800;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #0284c7; border: 2px solid #ffffff; color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .map-footer-bar { background: #0f172a; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #cbd5e1; font-weight: 700; gap: 8px; }
+    .btn-gmaps { background: #0284c7; color: #fff; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; white-space: nowrap; }
+
+    /* Ride Request Card */
+    .ride-req-card { background: #1e293b; border: 2px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15); }
+    .ride-req-card.home-route-match {
+      background: linear-gradient(135deg, #3b0764 0%, #1e1b4b 55%, #0f172a 100%);
+      border: 2.5px solid #e879f9;
+      box-shadow: 0 10px 30px rgba(217, 70, 239, 0.38);
+    }
+    .ride-req-card.outstation-ride-card {
+      background: linear-gradient(135deg, #78350f 0%, #1e293b 65%, #0f172a 100%);
+      border: 2.5px solid #fbbf24;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.35);
+    }
+    .home-match-pill { display: inline-block; background: #e879f9; color: #2e1065; font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: 20px; margin-bottom: 8px; text-transform: uppercase; }
+    .outstation-pill { display: inline-block; background: #fbbf24; color: #0b1329; font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: 20px; margin-bottom: 8px; text-transform: uppercase; }
+
+    .req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+    .req-fare { font-size: 22px; font-weight: 900; color: #4ade80; }
+    .loc-row { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #f8fafc; line-height: 1.4; }
+    .ride-btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-accept-ride { flex: 2; background: #10b981; color: #0b1329; border: none; padding: 13px; border-radius: 8px; font-size: 14px; font-weight: 900; cursor: pointer; }
+    .btn-reject-ride { flex: 1; background: #334155; color: #f8fafc; border: none; padding: 13px; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; }
+
+    /* Masked Call & Chat Row */
+    .privacy-comm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+    .btn-masked-call { background: #10b981; color: #0b1329; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .btn-masked-chat { background: #0284c7; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; position: relative; }
+    .chat-unread-dot { display: none; position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 10px; }
+
+    /* 1-Time KYC Onboarding Screen */
+    .kyc-onboarding-box { background: #1e293b; border: 1.5px solid #06b6d4; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+    .form-control { width: 100%; background: #0f172a; border: 1.5px solid #475569; color: #fff; padding: 10px 11px; border-radius: 8px; font-size: 14px; font-weight: 700; outline: none; }
+    .form-control:focus { border-color: #06b6d4; }
+    .btn-save { width: 100%; background: #10b981; color: #0b1329; border: none; padding: 13px; border-radius: 8px; font-size: 14px; font-weight: 900; cursor: pointer; margin-top: 8px; }
+
+    .doc-item-card { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 9px; }
+    .doc-item-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .doc-upload-mini { background: #1e293b; border: 1.5px dashed #475569; border-radius: 8px; padding: 8px 10px; text-align: center; cursor: pointer; flex: 1; }
+    .doc-upload-mini.uploaded { border-color: #10b981; border-style: solid; background: rgba(16, 185, 129, 0.1); }
+    .doc-upload-mini input[type="file"] { display: none; }
+    .doc-date-box { flex: 1; }
+    .doc-date-input { width: 100%; background: #1e293b; border: 1px solid #475569; color: #fff; padding: 7px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .ai-scan-status { font-size: 10.5px; font-weight: 800; margin-top: 5px; display: none; }
+
+    /* Front Network Summary Card */
+    .network-card { background: linear-gradient(135deg, #0e3b43 0%, #06232b 100%); border: 1.5px solid #06b6d4; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .depth-grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+    .depth-box { background: rgba(15, 23, 42, 0.75); padding: 7px 8px; border-radius: 6px; border: 1px solid rgba(6, 182, 212, 0.3); cursor: pointer; }
+    .depth-lbl { font-size: 10px; color: #94a3b8; font-weight: 800; }
+    .depth-val { font-size: 11.5px; font-weight: 900; color: #f8fafc; margin-top: 1px; }
+    .depth-rate { font-size: 9.5px; color: #f59e0b; font-weight: 700; }
+    .btn-invite-wa { width: 100%; background: #25d366; color: #fff; border: none; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 800; cursor: pointer; }
+
+    /* Modals */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; padding: 14px; }
+    .modal-body { background: #1e293b; border-radius: 16px; padding: 18px; width: 100%; max-width: 390px; border: 1.5px solid #334155; max-height: 90vh; overflow-y: auto; }
+    .hist-item { background: #0f172a; border: 1px solid #334155; border-radius: 9px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .doc-section-title { font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; margin: 10px 0 8px; border-top: 1px solid #334155; padding-top: 8px; }
+    .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .doc-upload-box { background: #0f172a; border: 1.5px dashed #475569; border-radius: 8px; padding: 8px; text-align: center; cursor: pointer; min-height: 82px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+    .doc-upload-box.uploaded { border-color: #10b981; border-style: solid; }
+    .doc-upload-box input[type="file"] { display: none; }
+    .doc-label { font-size: 10px; font-weight: 700; color: #cbd5e1; margin-top: 3px; }
+    .doc-hint { font-size: 9px; color: #64748b; }
+    .doc-preview { width: 100%; height: 50px; object-fit: cover; border-radius: 4px; display: none; margin-bottom: 3px; }
+    .btn-modal-row { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-m { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 12px; font-weight: 800; color: #fff; cursor: pointer; }
+
+    .call-pulse-ring {
+      width: 78px; height: 78px; margin: 10px auto 12px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981;
+      display: flex; align-items: center; justify-content: center; font-size: 34px;
+      animation: pulseGlow 1.4s infinite;
+    }
+    @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); } 70% { box-shadow: 0 0 0 18px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+    .rec-badge { display: inline-block; background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: 12px; margin-bottom: 8px; }
+    .chat-messages-box { height: 230px; overflow-y: auto; background: #0b1329; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .chat-msg { max-width: 82%; padding: 8px 11px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; }
+    .chat-msg.me { align-self: flex-end; background: #059669; color: #fff; border-bottom-right-radius: 2px; }
+    .chat-msg.other { align-self: flex-start; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-bottom-left-radius: 2px; }
+    .chat-meta { font-size: 9px; opacity: 0.75; margin-top: 2px; display: block; }
+    .quick-msg-strip { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 8px; scrollbar-width: none; }
+    .q-msg-chip { background: #0f172a; border: 1px solid #475569; color: #cbd5e1; font-size: 10.5px; padding: 4px 8px; border-radius: 12px; white-space: nowrap; cursor: pointer; }
+
+    .receipt-highlight-box {
+      background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%);
+      border: 2px solid #10b981; border-radius: 14px; padding: 18px 14px;
+      margin: 14px 0; text-align: center;
+    }
+    .receipt-total-big { font-size: 40px; font-weight: 900; color: #4ade80; letter-spacing: -0.5px; line-height: 1.1; margin: 4px 0 8px; }
+    .receipt-micro-split { font-size: 10.5px; color: #94a3b8; font-weight: 600; background: rgba(15, 23, 42, 0.65); display: inline-block; padding: 4px 10px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- 3-LINE SIDE DRAWER MENU -->
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="toggleCapMenu(false)"></div>
+  <div class="side-drawer" id="sideDrawer">
+    <div class="drawer-header">
+      <div class="brand">Your<span>Ride</span> Captain</div>
+      <button class="drawer-close" onclick="toggleCapMenu(false)">✕</button>
+    </div>
+
+    <div class="my-id-card">
+      <div>
+        <div style="font-size: 10px; color: #67e8f9; font-weight: 800; text-transform: uppercase;">Meri Unique Captain ID</div>
+        <div style="font-size: 18px; font-weight: 900; color: #fde047; letter-spacing: 0.5px;" id="drawerCapUniqueId">CAP-NEW</div>
+        <div style="font-size: 12px; color: #ffffff; font-weight: 800;" id="drawerCapName">Captain</div>
+        <div style="font-size: 10.5px; color: #cbd5e1; font-weight: 600;" id="drawerCapVeh">Cab: --</div>
+      </div>
+      <a href="index.html" style="background:#1e293b; border:1px solid #475569; color:#f8fafc; font-size:10px; font-weight:800; padding:6px 8px; border-radius:6px; text-decoration:none;">Switch Role</a>
+    </div>
+
+    <!-- COMPLETE 4-LEVEL CAPTAIN NETWORK STRUCTURE + KM & INCOME PER MEMBER -->
+    <div class="drawer-net-section">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12.5px; font-weight:900; color:#22d3ee;">🌳 Mera Full Network & Income</span>
+        <span style="background:#064e3b; color:#6ee7b7; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:10px;" id="capDrawerTeamBadge">0 Team</span>
+      </div>
+      <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Sponsor ID: <strong style="color:#fde047;" id="drawerMySponsor">Direct (HQ)</strong></div>
+
+      <div style="background:#0f172a; border:1px solid #10b981; border-radius:7px; padding:7px 9px; margin:7px 0; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:10.5px; color:#cbd5e1; font-weight:700;">Team KM: <strong style="color:#38bdf8;" id="capDrawerTotalKm">0 KM</strong></span>
+        <span style="font-size:11px; color:#4ade80; font-weight:900;" id="capDrawerTotalInc">Income: ₹ 0.00</span>
+      </div>
+
+      <div class="level-pills-4">
+        <div class="lvl-pill-box" onclick="setCapLevelFilter(1)"><div class="lvl-pill-title">L1 Direct</div><div class="lvl-pill-rate">₹0.50/KM</div><div class="lvl-pill-cnt" id="capCntL1">0</div></div>
+        <div class="lvl-pill-box" onclick="setCapLevelFilter(2)"><div class="lvl-pill-title">Level 2</div><div class="lvl-pill-rate">₹0.30/KM</div><div class="lvl-pill-cnt" id="capCntL2">0</div></div>
+        <div class="lvl-pill-box" onclick="setCapLevelFilter(3)"><div class="lvl-pill-title">Level 3</div><div class="lvl-pill-rate">₹0.15/KM</div><div class="lvl-pill-cnt" id="capCntL3">0</div></div>
+        <div class="lvl-pill-box" onclick="setCapLevelFilter(4)"><div class="lvl-pill-title">Level 4</div><div class="lvl-pill-rate">₹0.05/KM</div><div class="lvl-pill-cnt" id="capCntL4">0</div></div>
+      </div>
+
+      <div class="lvl-filter-strip">
+        <button type="button" class="lvl-fbtn active" id="capFbtn-0" onclick="setCapLevelFilter(0)">All</button>
+        <button type="button" class="lvl-fbtn" id="capFbtn-1" onclick="setCapLevelFilter(1)">L1</button>
+        <button type="button" class="lvl-fbtn" id="capFbtn-2" onclick="setCapLevelFilter(2)">L2</button>
+        <button type="button" class="lvl-fbtn" id="capFbtn-3" onclick="setCapLevelFilter(3)">L3</button>
+        <button type="button" class="lvl-fbtn" id="capFbtn-4" onclick="setCapLevelFilter(4)">L4</button>
+      </div>
+
+      <input type="text" class="dnet-search" id="capNetworkSearchInput" placeholder="🔍 Naam, ID ya Sponsor search karein..." oninput="renderCaptainLinkedTeam()" />
+      <div id="capLinkedTeamList"></div>
+    </div>
+
+    <!-- GO BACK HOME MODE -->
+    <div class="go-home-drawer-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:13px; font-weight:900; color:#f3e8ff;">🏠 Go Back Home Mode</span>
+        <span id="drawerHomeModeBadge" style="font-size:9.5px; background:#4c1d95; color:#e9d5ff; padding:2px 6px; border-radius:5px; font-weight:800;">OFF</span>
+      </div>
+      <div style="font-size:10.5px; color:#d8b4fe; margin-top:3px;">
+        Apne ghar ka address search karein ya 🎯 GPS dabakar set karein. Shaam ko ghar side ki hi rides dikhengi:
+      </div>
+
+      <div class="home-search-wrap">
+        <input type="text" class="home-loc-input" id="capHomeAddressInput" placeholder="Ghar ka area / sector likhein..." oninput="searchCaptainHomeAddress(this.value)" autocomplete="off">
+        <button type="button" class="btn-home-gps" onclick="setCaptainHomeFromGPS()" title="Current GPS ko Ghar Set Karein">🎯</button>
+        <div class="home-suggestions" id="homeSuggestionsBox"></div>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <button type="button" class="btn-drawer-full" style="background:#9333ea; flex:2;" id="btnToggleGoHome" onclick="toggleGoBackHomeMode()">🏠 GO BACK HOME</button>
+        <button type="button" class="btn-drawer-full" style="background:#334155; flex:1;" onclick="saveCaptainHomeLocation()">💾 Save</button>
+      </div>
+    </div>
+
+    <!-- PERMANENT LOCKED KYC DOCUMENTS STATUS -->
+    <div class="drawer-card" style="border-color: #10b981;">
+      <div class="kyc-status" style="color: #4ade80;" id="drawerDocLockTitle">🔒 Cab & KYC Documents (Locked)</div>
+      <div class="drawer-sub" id="drawerDocLockSub">RC, DL, Insurance & Fitness permanently submitted to HQ.</div>
+      <button class="btn-drawer-full" style="background: #334155;" onclick="toggleCapMenu(false); openLockedDocsSummary();">👁️ VIEW SUBMITTED DOCS (READ-ONLY)</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #6d28d9;">
+      <div class="kyc-status" id="capBankStatusBadge"><span class="kyc-pending">🏦 Bank / PAN / ID: Pending</span></div>
+      <div class="drawer-sub" id="capBankSubText">Referral payout sidha bank account me pane ke liye details dalein</div>
+      <button class="btn-drawer-full" style="background: #8b5cf6;" id="capBankBtn" onclick="toggleCapMenu(false); openCapBankModal();">UPDATE BANK & ID</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #8b5cf6;">
+      <div class="kyc-status" style="color: #c4b5fd;">💸 Team Bonus Withdraw (Min ₹300)</div>
+      <div class="drawer-sub">Available Referral Wallet: <strong style="color:#4ade80;" id="drawerRefWallet">₹ 0.00</strong></div>
+      <button class="btn-drawer-full" style="background: #7c3aed;" onclick="toggleCapMenu(false); requestCaptainWithdrawal();">💸 REQUEST PAYOUT (₹300+)</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #0284c7;">
+      <div class="kyc-status" style="color: #38bdf8;">📜 Meri Completed Trips (<span id="drawerTripCount">0</span>)</div>
+      <div class="drawer-sub">Aaj ki aur purani rides ki kamai ka record dekhein</div>
+      <button class="btn-drawer-full" style="background: #0284c7;" onclick="toggleCapMenu(false); openCapHistoryModal();">VIEW TRIP HISTORY</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #dc2626;">
+      <div class="kyc-status" style="color: #fca5a5;">🚨 Emergency SOS Support</div>
+      <button class="btn-drawer-full" style="background: #dc2626;" onclick="if(confirm('Police Helpline 112 dial karein?')) window.location.href='tel:112';">CALL 112 EMERGENCY</button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <button class="menu-btn" onclick="toggleCapMenu(true)" aria-label="Menu">
+        ☰
+        <span class="menu-dot" id="capMenuDot"></span>
+      </button>
+      <div class="brand">Your<span>Ride</span> Captain</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span class="cap-id-pill" id="headerCapIdBadge">ID: CAP-NEW</span>
+      <a href="index.html" class="btn-home-top">🏠 Home</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hq-banner" id="capHqBanner"></div>
+    <div class="expiry-alert-banner" id="expiryAlertBanner"></div>
+
+    <div class="hq-pending-lock-card" id="hqPendingVerificationCard">
+      <div style="font-size: 32px; margin-bottom: 4px;">⏳🛡️</div>
+      <h3 style="font-size: 16px; font-weight: 900; color: #fde047;">Company Verification Pending</h3>
+      <p style="font-size: 12px; color: #fef3c7; margin-top: 5px; line-height: 1.45;">
+        Aapke original documents (RC, DL, Insurance, Fitness aur Selfie) HQ Cloud par lock hokar submit ho gaye hain.<br>
+        <strong>Company team dwara verify hote hi aapki duty automatic chalu ho jayegi!</strong>
+      </p>
+      <button type="button" class="btn-w btn-pass" style="margin-top: 10px; width: 100%;" onclick="checkCaptainHqApprovalFromCloud()">🔄 CHECK HQ APPROVAL STATUS</button>
+    </div>
+
+    <div class="go-home-active-banner" id="goHomeActiveStrip">
+      <div>
+        <div style="font-size:12px; font-weight:900; color:#f3e8ff;">🏠 GO BACK HOME MODE ACTIVE</div>
+        <div style="font-size:10.5px; color:#e9d5ff;" id="goHomeTargetLabel">Destination: Shalimar Garden</div>
+      </div>
+      <button type="button" class="btn-stop-home" onclick="disableGoBackHomeMode()">✕ OFF</button>
+    </div>
+
+    <!-- 1-TIME CAPTAIN KYC -->
+    <div class="kyc-onboarding-box" id="kycOnboardingSection">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h3 style="font-size: 16px; font-weight: 900; color: #38bdf8;">🪪 1-Time Captain & Cab KYC</h3>
+        <span style="font-size:10px; background:#b45309; color:#fff; padding:3px 7px; border-radius:6px; font-weight:800;">🔒 1-Time Lock</span>
+      </div>
+      <p style="font-size: 11.5px; color: #fde047; margin-bottom: 12px; font-weight: 700;">
+        ⚠️ Dhyaan dein: Sabhi original documents clear upload karein. Ek baar submit karne ke baad documents permanently lock ho jayenge aur change nahi honge!
+      </p>
+
+      <div class="form-group"><label>Captain Pura Naam *</label><input type="text" class="form-control" id="capNameInput" placeholder="Jaise: Aaditya / Rajesh Kumar"></div>
+      <div class="form-group"><label>Mobile Number *</label><input type="tel" class="form-control" id="capPhoneInput" maxlength="10" placeholder="10-digit mobile number"></div>
+      <div class="form-group" style="background: rgba(6, 182, 212, 0.1); padding: 9px; border-radius: 8px; border: 1px dashed #06b6d4;">
+        <label style="color:#22d3ee;">🤝 Aapko Kisne Refer Kiya? (Referral ID - Optional)</label>
+        <input type="text" class="form-control" id="capSponsorIdInput" style="text-transform: uppercase;" placeholder="Jaise: CAP-101 ya YR-101">
+      </div>
+      <div class="form-group"><label>Commercial Cab Number (Yellow Plate) *</label><input type="text" class="form-control" id="capVehInput" style="text-transform: uppercase;" placeholder="UP14DQ4810"></div>
+      <div class="form-group"><label>Base Area / Stand</label><input type="text" class="form-control" id="capAreaInput" value="Shalimar Garden" placeholder="Jaise: Shalimar Garden, Noida Sec 62"></div>
+      <div class="form-group">
+        <label>Gaadi Category</label>
+        <select class="form-control" id="capCatInput">
+          <option value="Hatchback">🚗 Hatchback (WagonR, Swift, Celerio)</option>
+          <option value="Sedan">🚘 Sedan (Dzire, Aura, Amaze)</option>
+          <option value="6-Seater SUV">🚙 6-Seater SUV (Ertiga, Carens, Innova)</option>
+        </select>
+      </div>
+
+      <div style="font-size: 11.5px; font-weight: 900; color: #f59e0b; margin: 12px 0 8px; text-transform: uppercase;">
+        📎 5 Original Documents Photos + Expiry Date Dalein:
+      </div>
+
+      <div class="doc-item-card">
+        <div class="doc-item-top">
+          <label class="doc-upload-mini" id="box-capRc">
+            <input type="file" accept="image/*" onchange="handleAiDocUpload(this, 'capRc', 'exp-capRc', 'status-capRc')">
+            <span style="font-size:12px; font-weight:800; color:#e2e8f0;">🪪 Yellow Plate RC *</span><br>
+            <span style="font-size:10px; color:#94a3b8;" id="hint-capRc">Tap to Upload Photo</span>
+          </label>
+          <div class="doc-date-box">
+            <label style="font-size:9.5px; color:#94a3b8; font-weight:800;">RC Valid Upto *</label>
+            <input type="date" class="doc-date-input" id="exp-capRc" onchange="verifyDocDateAI('exp-capRc', 'status-capRc', 'Yellow Plate RC')">
+          </div>
+        </div>
+        <div class="ai-scan-status" id="status-capRc"></div>
+      </div>
+
+      <div class="doc-item-card">
+        <div class="doc-item-top">
+          <label class="doc-upload-mini" id="box-capDl">
+            <input type="file" accept="image/*" onchange="handleAiDocUpload(this, 'capDl', 'exp-capDl', 'status-capDl')">
+            <span style="font-size:12px; font-weight:800; color:#e2e8f0;">🚘 Commercial DL *</span><br>
+            <span style="font-size:10px; color:#94a3b8;" id="hint-capDl">Tap to Upload Photo</span>
+          </label>
+          <div class="doc-date-box">
+            <label style="font-size:9.5px; color:#94a3b8; font-weight:800;">DL Expiry Date *</label>
+            <input type="date" class="doc-date-input" id="exp-capDl" onchange="verifyDocDateAI('exp-capDl', 'status-capDl', 'Commercial DL')">
+          </div>
+        </div>
+        <div class="ai-scan-status" id="status-capDl"></div>
+      </div>
+
+      <div class="doc-item-card">
+        <div class="doc-item-top">
+          <label class="doc-upload-mini" id="box-capIns">
+            <input type="file" accept="image/*" onchange="handleAiDocUpload(this, 'capIns', 'exp-capIns', 'status-capIns')">
+            <span style="font-size:12px; font-weight:800; color:#e2e8f0;">🛡️ Cab Insurance *</span><br>
+            <span style="font-size:10px; color:#94a3b8;" id="hint-capIns">Tap to Upload Photo</span>
+          </label>
+          <div class="doc-date-box">
+            <label style="font-size:9.5px; color:#94a3b8; font-weight:800;">Insurance Expiry *</label>
+            <input type="date" class="doc-date-input" id="exp-capIns" onchange="verifyDocDateAI('exp-capIns', 'status-capIns', 'Cab Insurance')">
+          </div>
+        </div>
+        <div class="ai-scan-status" id="status-capIns"></div>
+      </div>
+
+      <div class="doc-item-card" style="border-color: #0284c7;">
+        <div class="doc-item-top">
+          <label class="doc-upload-mini" id="box-capFit">
+            <input type="file" accept="image/*" onchange="handleAiDocUpload(this, 'capFit', 'exp-capFit', 'status-capFit')">
+            <span style="font-size:12px; font-weight:800; color:#38bdf8;">📋 Gaadi Fitness Cert. *</span><br>
+            <span style="font-size:10px; color:#94a3b8;" id="hint-capFit">Tap to Upload Photo</span>
+          </label>
+          <div class="doc-date-box">
+            <label style="font-size:9.5px; color:#94a3b8; font-weight:800;">Fitness Valid Upto *</label>
+            <input type="date" class="doc-date-input" id="exp-capFit" onchange="verifyDocDateAI('exp-capFit', 'status-capFit', 'Fitness Certificate')">
+          </div>
+        </div>
+        <div class="ai-scan-status" id="status-capFit"></div>
+      </div>
+
+      <div class="doc-item-card">
+        <div class="doc-item-top">
+          <label class="doc-upload-mini" id="box-refSelfie">
+            <input type="file" accept="image/*" onchange="handleSelfieUpload(this)">
+            <span style="font-size:12px; font-weight:800; color:#e2e8f0;">🤳 Captain Selfie *</span><br>
+            <span style="font-size:10px; color:#94a3b8;" id="hint-refSelfie">Clear Face Photo Upload Karein</span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-save" id="submitKycLockBtn" onclick="verifyAndSaveCaptainOnce()">🔒 SUBMIT & LOCK DOCUMENTS FOR HQ APPROVAL →</button>
+    </div>
+
+    <!-- MAIN CAPTAIN DASHBOARD -->
+    <div id="captainDashboardSection" style="display: none;">
+
+      <div class="wallet-card">
+        <div class="w-top">
+          <div>
+            <div style="font-size: 11px; color: #67e8f9; font-weight: 800;">PREPAID SAAS WALLET (CLOUD SYNC)</div>
+            <div class="w-bal" id="capWalletBal">₹ 50.00</div>
+          </div>
+          <div class="pass-badge" id="passStatusBadge">✅ ₹1/Day Pass Active</div>
+        </div>
+        <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 10px;">
+          💡 0% Commission! Customer se 100% Cash/UPI seedha aapka. Har ride par ₹3/KM pool fee wallet se kat-ti hai.
+        </div>
+        <div class="w-actions">
+          <button class="btn-w btn-recharge" onclick="rechargeWallet()">+ RECHARGE WALLET</button>
+          <button class="btn-w btn-pass" onclick="activateDailyPass()">⚡ ACTIVATE ₹1 PASS</button>
+        </div>
+      </div>
+
+      <div class="duty-card">
+        <div>
+          <div style="font-size: 15px; font-weight: 900;" id="dutyTitle">🟢 Aap ON-DUTY Hain</div>
+          <div style="font-size: 11.5px; color: #94a3b8;" id="dutySubText">● Live Cloud Connected — Nayi rides yahan dikhengi</div>
+        </div>
+        <button class="btn-duty duty-on" id="dutyToggleBtn" onclick="toggleDuty()">ON DUTY</button>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-box">
+          <div class="stat-lbl">Today Trips</div>
+          <div class="stat-val" id="statTrips">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Total KM</div>
+          <div class="stat-val" style="color:#38bdf8;" id="statKm">0 KM</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Direct Cash</div>
+          <div class="stat-val" style="color:#4ade80;" id="statEarn">₹ 0</div>
+        </div>
+      </div>
+
+      <div id="liveRideContainer"></div>
+
+      <div class="map-wrapper">
+        <div class="map-container">
+          <div id="captainMap"></div>
+          <button type="button" class="map-relocate-btn" onclick="relocateCaptainGPS()" title="Meri Live Location Dikhayein">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+          </button>
+        </div>
+        <div class="map-footer-bar">
+          <span id="mapStatusText" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📍 Live Zone: Shalimar Garden / NCR</span>
+          <a id="gmapsNavLink" href="https://www.google.com/maps" target="_blank" class="btn-gmaps">🧭 Navigate</a>
+        </div>
+      </div>
+
+      <!-- FRONT 4-LEVEL REFERRAL NETWORK SUMMARY CARD -->
+      <div class="network-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:800; color:#67e8f9;">🤝 Meri Referral ID: <strong style="color:#fde047;" id="cardCapUniqueId">CAP-NEW</strong></span>
+          <span style="font-size:14px; font-weight:900; color:#4ade80;" id="cardCapRefEarn">₹ 0.00</span>
+        </div>
+
+        <div class="depth-grid-4">
+          <div class="depth-box" onclick="toggleCapMenu(true); setCapLevelFilter(1);">
+            <div class="depth-lbl">Level 1 (Direct)</div>
+            <div class="depth-val" id="capBoxL1Stats">0 Log • 0 KM</div>
+            <div class="depth-rate" id="capBoxL1Inc">₹0.50/KM • Earned: ₹0.00</div>
+          </div>
+          <div class="depth-box" onclick="toggleCapMenu(true); setCapLevelFilter(2);">
+            <div class="depth-lbl">Level 2 Team</div>
+            <div class="depth-val" id="capBoxL2Stats">0 Log • 0 KM</div>
+            <div class="depth-rate" id="capBoxL2Inc">₹0.30/KM • Earned: ₹0.00</div>
+          </div>
+          <div class="depth-box" onclick="toggleCapMenu(true); setCapLevelFilter(3);">
+            <div class="depth-lbl">Level 3 Team</div>
+            <div class="depth-val" id="capBoxL3Stats">0 Log • 0 KM</div>
+            <div class="depth-rate" id="capBoxL3Inc">₹0.15/KM • Earned: ₹0.00</div>
+          </div>
+          <div class="depth-box" onclick="toggleCapMenu(true); setCapLevelFilter(4);">
+            <div class="depth-lbl">Level 4 Team</div>
+            <div class="depth-val" id="capBoxL4Stats">0 Log • 0 KM</div>
+            <div class="depth-rate" id="capBoxL4Inc">₹0.05/KM • Earned: ₹0.00</div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:6px;">
+          <button class="btn-invite-wa" style="flex:2;" onclick="shareCapReferral()">📲 WhatsApp Invite Bhejein</button>
+          <button type="button" onclick="toggleCapMenu(true)" style="flex:1; background:#0284c7; color:#fff; border:none; border-radius:6px; font-size:11.5px; font-weight:800; cursor:pointer;">🌳 Full Tree</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- READ-ONLY LOCKED DOCS MODAL -->
+  <div class="modal-overlay" id="lockedDocsReadOnlyModal">
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size: 16px; color:#4ade80;">🔒 Submitted Documents (Locked)</h3>
+        <button onclick="document.getElementById('lockedDocsReadOnlyModal').style.display='none'" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:11px; color:#fde047; margin-bottom:10px;">
+        Suraksha niyam ke anusar ek baar submit hone ke baad documents edit/change nahi kiye ja sakte.
+      </p>
+      <div id="lockedDocsReadOnlyContent" style="font-size:12px; color:#e2e8f0;"></div>
+    </div>
+  </div>
+
+  <!-- MASKED IN-APP CALL MODAL -->
+  <div class="modal-overlay" id="capMaskedCallModal">
+    <div class="modal-body" style="text-align: center; border-color: #10b981;">
+      <div class="rec-badge">● CALL RECORDING FOR SAFETY</div>
+      <div class="call-pulse-ring">📞</div>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff;" id="capCallPartnerTitle">YourRide Rider</h3>
+      <p style="font-size: 11px; color: #6ee7b7; font-weight: 700; margin-top: 3px;">🔒 Virtual Masked Bridge • Phone Number Hidden</p>
+      <div style="font-size: 26px; font-weight: 900; color: #fde047; margin: 12px 0;" id="capCallTimerLabel">00:00</div>
+      <p style="font-size: 11px; color: #94a3b8; margin-bottom: 14px;" id="capCallMicStatus">🎙️ Mic Active — Awaaz Cloud HQ par record ho rahi hai...</p>
+      <button type="button" class="btn-save" style="background: #dc2626; color: #fff; margin-top: 0;" onclick="endCapMaskedCall()">📵 END CALL & SAVE RECORDING</button>
+    </div>
+  </div>
+
+  <!-- IN-APP PRIVATE CHAT MODAL -->
+  <div class="modal-overlay" id="capInAppChatModal">
+    <div class="modal-body" style="border-color: #0284c7;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 900; color: #38bdf8;">💬 Private Chat with Rider</h3>
+          <span style="font-size: 10px; color: #6ee7b7; font-weight: 700;">🔒 Rider Number 100% Hidden</span>
+        </div>
+        <button type="button" onclick="closeCapChatModal()" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="chat-messages-box" id="capChatMessagesBox"></div>
+
+      <div class="quick-msg-strip">
+        <span class="q-msg-chip" onclick="sendCapQuickMsg('Main pickup location par pahunch gaya hu')">📍 Pickup par pahunch gaya</span>
+        <span class="q-msg-chip" onclick="sendCapQuickMsg('2 minute me aa raha hu')">⏱️ 2 min me aa raha hu</span>
+        <span class="q-msg-chip" onclick="sendCapQuickMsg('Kripya bahar aa jaiye')">🚖 Bahar aa jaiye</span>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <input type="text" class="form-control" style="padding:8px 10px; font-size:13px;" id="capChatInput" placeholder="Rider ko message likhein...">
+        <button type="button" style="background:#0284c7; color:#fff; border:none; padding:0 14px; border-radius:8px; font-weight:900; cursor:pointer;" onclick="sendCapChatMsg()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST-RIDE FARE BREAKDOWN POPUP MODAL -->
+  <div class="modal-overlay" id="rideCompleteReceiptModal">
+    <div class="modal-body" style="text-align: center; border-color: #10b981;">
+      <div style="font-size: 38px; margin-bottom: 4px;">✅🚖</div>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff;">Ride Complete!</h3>
+      <p style="font-size: 11.5px; color: #cbd5e1; margin-top: 3px;" id="receiptRouteLabel">Customer se Cash ya UPI par lein:</p>
+      <div class="receipt-highlight-box">
+        <div style="font-size: 10.5px; font-weight: 800; color: #6ee7b7; text-transform: uppercase;">Total Customer Fare (<span id="receiptKmText">0 KM</span>)</div>
+        <div class="receipt-total-big" id="receiptTotalHighlight">₹ 0</div>
+        <div class="receipt-micro-split" id="receiptMicroBreakdown">0fare + 0booking fees = 0</div>
+      </div>
+      <button class="btn-save" style="margin-top: 6px;" onclick="closeReceiptModal()">DONE & NEXT RIDE</button>
+    </div>
+  </div>
+
+  <!-- CAPTAIN BANK, PAN & ID PAYOUT MODAL -->
+  <div class="modal-overlay" id="capBankModal">
+    <div class="modal-body">
+      <h3 style="margin-bottom: 4px; font-size: 15px; color:#fff;">🏦 Bank, PAN & ID Payout KYC</h3>
+      <p style="font-size: 11px; color:#94a3b8; margin-bottom: 10px;">4-Level Referral income sidha aapke bank account me transfer hogi.</p>
+      <div class="form-group"><label>12-Digit Government ID Number *</label><input type="tel" class="form-control" id="capAadhaarInput" maxlength="12" placeholder="12-digit ID Number"></div>
+      <div class="form-group"><label>PAN Card Number *</label><input type="text" class="form-control" id="capPanInput" maxlength="10" style="text-transform: uppercase;" placeholder="ABCDE1234F"></div>
+      <div class="form-group"><label>Account Holder Name *</label><input type="text" class="form-control" id="capAccHolderInput" placeholder="Bank Passbook wala naam"></div>
+      <div class="form-group"><label>Bank Account Number *</label><input type="tel" class="form-control" id="capAccNumInput" placeholder="Account Number dalein"></div>
+      <div class="two-col">
+        <div class="form-group"><label>IFSC Code *</label><input type="text" class="form-control" id="capIfscInput" maxlength="11" style="text-transform: uppercase;" placeholder="SBIN0001234"></div>
+        <div class="form-group"><label>UPI ID (Optional)</label><input type="text" class="form-control" id="capUpiInput" placeholder="name@upi"></div>
+      </div>
+      <div class="doc-section-title">📎 Document Photos Upload Karein</div>
+      <div class="doc-grid">
+        <label class="doc-upload-box" id="box-capAadhaarFront"><input type="file" accept="image/*" onchange="handleCapBankDoc(this, 'capAadhaarFront')"><img class="doc-preview" id="prev-capAadhaarFront"><span id="icon-capAadhaarFront">🪪</span><span class="doc-label">ID Proof Front</span><span class="doc-hint">Tap to upload</span></label>
+        <label class="doc-upload-box" id="box-capAadhaarBack"><input type="file" accept="image/*" onchange="handleCapBankDoc(this, 'capAadhaarBack')"><img class="doc-preview" id="prev-capAadhaarBack"><span id="icon-capAadhaarBack">🪪</span><span class="doc-label">ID Proof Back</span><span class="doc-hint">Tap to upload</span></label>
+        <label class="doc-upload-box" id="box-capPanPhoto"><input type="file" accept="image/*" onchange="handleCapBankDoc(this, 'capPanPhoto')"><img class="doc-preview" id="prev-capPanPhoto"><span id="icon-capPanPhoto">💳</span><span class="doc-label">PAN Card Photo</span><span class="doc-hint">Tap to upload</span></label>
+        <label class="doc-upload-box" id="box-capBankProof"><input type="file" accept="image/*" onchange="handleCapBankDoc(this, 'capBankProof')"><img class="doc-preview" id="prev-capBankProof"><span id="icon-capBankProof">🏦</span><span class="doc-label">Cheque / Passbook</span><span class="doc-hint">Tap to upload</span></label>
+      </div>
+      <div class="btn-modal-row">
+        <button class="btn-m" style="background:#475569;" onclick="closeCapBankModal()">Cancel</button>
+        <button class="btn-m" style="background:#10b981; color:#0b1329;" onclick="submitCapBankDetails()">✅ Save Payout KYC</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trip History Modal -->
+  <div class="modal-overlay" id="capHistoryModal">
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size: 16px; color:#fff;">📜 Meri Completed Trips</h3>
+        <button onclick="document.getElementById('capHistoryModal').style.display='none'" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <div id="capHistoryList"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const FIREBASE_DB_URL = "https://yourridelive-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    async function cloudGet(path) {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+        return await res.json();
+      } catch (e) { return null; }
+    }
+
+    async function cloudSet(path, data) {
+      try {
+        await fetch(`${FIREBASE_DB_URL}/${path}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
+    }
+
+    async function cloudPatch(path, data) {
+      try {
+        await fetch(`${FIREBASE_DB_URL}/${path}.json`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
+    }
+
+    async function cloudPush(path, data) {
+      try {
+        await fetch(`${FIREBASE_DB_URL}/${path}.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
+    }
+
+    let isOnDuty = false;
+    let isHqApproved = false;
+    let walletBalance = parseFloat(localStorage.getItem('yourride_cap_wallet') || '50');
+    let passActive = localStorage.getItem('yourride_cap_pass') !== 'false';
+    let capDocs = {};
+    let capBankDocs = { capAadhaarFront: "", capAadhaarBack: "", capPanPhoto: "", capBankProof: "" };
+    let capMap, capMarker, rideRouteLine;
+    let selectedCapLevel = 0;
+
+    /* ========================================================
+       LIVE CLOUD WALLET SYNC (HQ LEDGER TOP-UP + AUTO DEDUCT)
+       ======================================================== */
+    async function syncCaptainWalletFromCloud() {
+      const capId = localStorage.getItem('yourride_captain_id');
+      if (!capId) return;
+      const capCloud = await cloudGet(`captains/${capId}`);
+      if (capCloud && capCloud.wallet !== undefined && !isNaN(Number(capCloud.wallet))) {
+        walletBalance = Number(capCloud.wallet);
+        localStorage.setItem('yourride_cap_wallet', walletBalance);
+        updateWalletUI();
+      }
+    }
+
+    async function saveCaptainWalletToCloud(newBal) {
+      walletBalance = +Number(newBal).toFixed(2);
+      localStorage.setItem('yourride_cap_wallet', walletBalance);
+      updateWalletUI();
+      const capId = localStorage.getItem('yourride_captain_id');
+      if (capId) {
+        await cloudPatch(`captains/${capId}`, { wallet: walletBalance });
+        await cloudPatch(`network/${capId}`, { wallet: walletBalance });
+      }
+    }
+
+    function build4LevelTreeForCap(myId, netObj) {
+      const all = Object.values(netObj || {});
+      const rates = { 1: 0.50, 2: 0.30, 3: 0.15, 4: 0.05 };
+
+      const enrich = (member, level) => {
+        const sponsorNode = netObj[member.sponsorId];
+        const sponsorLabel = sponsorNode ? `${sponsorNode.name} (${sponsorNode.id})` : (member.sponsorId === myId ? 'You (Direct)' : member.sponsorId || 'HQ');
+        const memberKm = Number(member.km) || 0;
+        const myIncomeFromMember = +(memberKm * rates[level]).toFixed(2);
+        return { ...member, level, rate: rates[level], sponsorLabel, memberKm, myIncomeFromMember };
+      };
+
+      const l1 = all.filter(u => u.sponsorId === myId).map(u => enrich(u, 1));
+      const l1Ids = l1.map(u => u.id);
+      const l2 = all.filter(u => l1Ids.includes(u.sponsorId)).map(u => enrich(u, 2));
+      const l2Ids = l2.map(u => u.id);
+      const l3 = all.filter(u => l2Ids.includes(u.sponsorId)).map(u => enrich(u, 3));
+      const l3Ids = l3.map(u => u.id);
+      const l4 = all.filter(u => l3Ids.includes(u.sponsorId)).map(u => enrich(u, 4));
+
+      const combined = [...l1, ...l2, ...l3, ...l4];
+      const sumKm = arr => +(arr.reduce((s, x) => s + x.memberKm, 0)).toFixed(1);
+      const sumInc = arr => +(arr.reduce((s, x) => s + x.myIncomeFromMember, 0)).toFixed(2);
+
+      return {
+        l1, l2, l3, l4, combined,
+        l1Km: sumKm(l1), l2Km: sumKm(l2), l3Km: sumKm(l3), l4Km: sumKm(l4),
+        l1Inc: sumInc(l1), l2Inc: sumInc(l2), l3Inc: sumInc(l3), l4Inc: sumInc(l4),
+        totalTeamKm: sumKm(combined),
+        totalCalcIncome: sumInc(combined)
+      };
+    }
+
+    function setCapLevelFilter(lvl) {
+      selectedCapLevel = lvl;
+      [0, 1, 2, 3, 4].forEach(i => {
+        const btn = document.getElementById('capFbtn-' + i);
+        if (btn) btn.classList.toggle('active', i === lvl);
+      });
+      renderCaptainLinkedTeam();
+    }
+
+    async function renderCaptainLinkedTeam() {
+      const myCapId = localStorage.getItem('yourride_captain_id') || 'CAP-NEW';
+      const netObj = await cloudGet('network') || {};
+      const me = netObj[myCapId];
+      const tree = build4LevelTreeForCap(myCapId, netObj);
+      const storedBonus = me ? (Number(me.earnedBonus) || 0) : 0;
+      const displayIncome = Math.max(storedBonus, tree.totalCalcIncome);
+
+      document.getElementById('cardCapRefEarn').innerText = `₹ ${displayIncome.toFixed(2)}`;
+      document.getElementById('drawerRefWallet').innerText = `₹ ${displayIncome.toFixed(2)}`;
+      document.getElementById('capDrawerTotalInc').innerText = `Income: ₹ ${displayIncome.toFixed(2)}`;
+      document.getElementById('capDrawerTotalKm').innerText = `${tree.totalTeamKm} KM`;
+      document.getElementById('capDrawerTeamBadge').innerText = `${tree.combined.length} Members`;
+      document.getElementById('drawerMySponsor').innerText = (me && me.sponsorId && me.sponsorId !== "HQ") ? me.sponsorId : "Direct (HQ)";
+
+      document.getElementById('capBoxL1Stats').innerText = `${tree.l1.length} Log • ${tree.l1Km} KM`;
+      document.getElementById('capBoxL1Inc').innerText = `₹0.50/KM • Earned: ₹${tree.l1Inc.toFixed(2)}`;
+
+      document.getElementById('capBoxL2Stats').innerText = `${tree.l2.length} Log • ${tree.l2Km} KM`;
+      document.getElementById('capBoxL2Inc').innerText = `₹0.30/KM • Earned: ₹${tree.l2Inc.toFixed(2)}`;
+
+      document.getElementById('capBoxL3Stats').innerText = `${tree.l3.length} Log • ${tree.l3Km} KM`;
+      document.getElementById('capBoxL3Inc').innerText = `₹0.15/KM • Earned: ₹${tree.l3Inc.toFixed(2)}`;
+
+      document.getElementById('capBoxL4Stats').innerText = `${tree.l4.length} Log • ${tree.l4Km} KM`;
+      document.getElementById('capBoxL4Inc').innerText = `₹0.05/KM • Earned: ₹${tree.l4Inc.toFixed(2)}`;
+
+      document.getElementById('capCntL1').innerText = `${tree.l1.length} (${tree.l1Km}km)`;
+      document.getElementById('capCntL2').innerText = `${tree.l2.length} (${tree.l2Km}km)`;
+      document.getElementById('capCntL3').innerText = `${tree.l3.length} (${tree.l3Km}km)`;
+      document.getElementById('capCntL4').innerText = `${tree.l4.length} (${tree.l4Km}km)`;
+
+      const searchEl = document.getElementById('capNetworkSearchInput');
+      const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      let list = tree.combined;
+      if (selectedCapLevel > 0) list = list.filter(m => m.level === selectedCapLevel);
+      if (q) {
+        list = list.filter(m =>
+          (m.name || '').toLowerCase().includes(q) ||
+          (m.id || '').toLowerCase().includes(q) ||
+          (m.sponsorLabel || '').toLowerCase().includes(q)
+        );
+      }
+
+      const listEl = document.getElementById('capLinkedTeamList');
+      listEl.innerHTML = list.length === 0
+        ? `<div style="font-size:10.5px; color:#64748b; margin-top:4px; text-align:center;">Is level mein abhi koi member nahi mila. WhatsApp se invite bhejein!</div>`
+        : list.map(m => `
+          <div class="tree-sub-item">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span>
+                <span class="lvl-tag">L${m.level} • ${m.role === 'Captain' ? '🚖' : '🧳'} ${m.role}</span>
+                <strong>${m.name}</strong>
+              </span>
+              <span class="member-id-badge">${m.id}</span>
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:3px;">
+              🤝 Joda Gaya (Sponsor): <strong style="color:#e2e8f0;">${m.sponsorLabel}</strong>
+            </div>
+            <div class="tree-metrics-row">
+              <span style="color:#38bdf8; font-weight:800;">🛣️ Total KM: ${m.memberKm} KM</span>
+              <span style="color:#4ade80; font-weight:900;">💰 Aapki Income: ₹${m.myIncomeFromMember.toFixed(2)}</span>
+            </div>
+          </div>`).join('');
+    }
+
+    async function distribute4LevelBonus(riderOrCapId, kmVal) {
+      const netObj = await cloudGet('network') || {};
+      const rates = [0.50, 0.30, 0.15, 0.05];
+
+      const actor = netObj[riderOrCapId];
+      if (actor) {
+        const updatedActorKm = +((Number(actor.km) || 0) + kmVal).toFixed(1);
+        await cloudPatch(`network/${riderOrCapId}`, { km: updatedActorKm });
+        if (actor.role === 'Captain') await cloudPatch(`captains/${riderOrCapId}`, { km: updatedActorKm });
+        if (actor.role === 'Rider') await cloudPatch(`riders/${riderOrCapId}`, { km: updatedActorKm });
+      }
+
+      let currentUser = netObj[riderOrCapId];
+      for (let lvl = 0; lvl < 4; lvl++) {
+        if (!currentUser || !currentUser.sponsorId || currentUser.sponsorId === "HQ") break;
+        const sponsor = netObj[currentUser.sponsorId];
+        if (!sponsor) break;
+        const bonus = +(kmVal * rates[lvl]).toFixed(2);
+        await cloudPatch(`network/${sponsor.id}`, { earnedBonus: +((Number(sponsor.earnedBonus) || 0) + bonus).toFixed(2) });
+        currentUser = sponsor;
+      }
+    }
+
+    async function loadCapOffersAndBroadcasts() {
+      const myCapId = localStorage.getItem('yourride_captain_id');
+      const personalCapOffer = myCapId ? await cloudGet(`personal_offers/${myCapId}`) : null;
+      const broadcast = await cloudGet('latest_broadcast');
+      const b = document.getElementById('capHqBanner');
+
+      if (personalCapOffer && personalCapOffer.msg) {
+        b.style.display = 'block';
+        b.style.background = 'linear-gradient(90deg, #78350f 0%, #1e1b4b 100%)';
+        b.style.borderColor = '#f59e0b';
+        b.style.color = '#fef3c7';
+        b.innerHTML = `🎁 <strong>${personalCapOffer.title || 'Personal Captain Scheme'}:</strong> ${personalCapOffer.msg}`;
+      } else if (broadcast && broadcast.msg && broadcast.target === 'All Captains') {
+        b.style.display = 'block';
+        b.style.background = 'linear-gradient(90deg, #0e7490 0%, #1e293b 100%)';
+        b.style.borderColor = '#06b6d4';
+        b.style.color = '#ecfeff';
+        b.innerHTML = `📣 <strong>HQ Update:</strong> ${broadcast.msg}`;
+      } else {
+        b.style.display = 'none';
+      }
+    }
+
+    async function checkCaptainHqApprovalFromCloud() {
+      const capId = localStorage.getItem('yourride_captain_id');
+      if (!capId) return;
+      const capCloud = await cloudGet(`captains/${capId}`);
+      if (!capCloud) return;
+
+      if (capCloud.wallet !== undefined && !isNaN(Number(capCloud.wallet))) {
+        walletBalance = Number(capCloud.wallet);
+        localStorage.setItem('yourride_cap_wallet', walletBalance);
+        updateWalletUI();
+      }
+
+      const lockCard = document.getElementById('hqPendingVerificationCard');
+      const docTitle = document.getElementById('drawerDocLockTitle');
+      const docSub = document.getElementById('drawerDocLockSub');
+
+      if (capCloud.status === 'ACTIVE') {
+        isHqApproved = true;
+        lockCard.style.display = 'none';
+        docTitle.innerText = '✅🔒 Cab & KYC Verified & Locked';
+        docSub.innerText = 'HQ Approved • Permanent Read-Only Lock';
+        if (!isOnDuty) { isOnDuty = true; toggleDutyUIOnly(); }
+      } else if (capCloud.status === 'SUSPENDED') {
+        isHqApproved = false; isOnDuty = false; toggleDutyUIOnly();
+        lockCard.style.display = 'block'; lockCard.style.borderColor = '#ef4444';
+        lockCard.innerHTML = `<div style="font-size:30px;">🚫</div><h3 style="color:#f87171; font-size:15px;">Account Suspended by HQ</h3><p style="font-size:11.5px; color:#fecaca; margin-top:4px;">Kripya Company HQ se sampark karein.</p>`;
+      } else {
+        isHqApproved = false; isOnDuty = false; toggleDutyUIOnly();
+        lockCard.style.display = 'block';
+        docTitle.innerText = '⏳🔒 Docs Submitted (Awaiting HQ)';
+        docSub.innerText = 'Locked • Company verification pending';
+      }
+    }
+
+    function openLockedDocsSummary() {
+      const saved = JSON.parse(localStorage.getItem('yourride_captain_docs') || '{}');
+      const exp = saved.expiryDates || {};
+      document.getElementById('lockedDocsReadOnlyContent').innerHTML = `
+        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; line-height:1.6;">
+          <p><strong>Captain ID:</strong> ${saved.capId || '-'}</p>
+          <p><strong>Vehicle No:</strong> ${saved.vehNum || '-'} (${saved.cat || '-'})</p>
+          <p><strong>RC Valid Upto:</strong> ${exp.rc || '-'}</p>
+          <p><strong>DL Expiry:</strong> ${exp.dl || '-'}</p>
+          <p><strong>Insurance Expiry:</strong> ${exp.ins || '-'}</p>
+          <p><strong>Fitness Valid Upto:</strong> ${exp.fit || '-'}</p>
+          <p style="color:#4ade80; margin-top:6px;"><strong>Status:</strong> 🔒 Locked & Synced to HQ Cloud</p>
+        </div>`;
+      document.getElementById('lockedDocsReadOnlyModal').style.display = 'flex';
+    }
+
+    let capMediaRecorder = null, capAudioChunks = [], capCallTimer = null, capCallSeconds = 0, currentCapRideObj = null;
+
+    async function startCapMaskedCall() {
+      const rideId = (currentCapRideObj && currentCapRideObj.rideId) ? currentCapRideObj.rideId : "RID-LIVE";
+      const riderName = (currentCapRideObj && currentCapRideObj.riderName) ? currentCapRideObj.riderName : "YourRide Rider";
+      document.getElementById('capCallPartnerTitle').innerText = `${riderName} (Masked Call)`;
+      document.getElementById('capCallTimerLabel').innerText = "00:00";
+      document.getElementById('capMaskedCallModal').style.display = 'flex';
+
+      capCallSeconds = 0; capAudioChunks = [];
+      clearInterval(capCallTimer);
+      capCallTimer = setInterval(() => {
+        capCallSeconds++;
+        document.getElementById('capCallTimerLabel').innerText = `${String(Math.floor(capCallSeconds / 60)).padStart(2, '0')}:${String(capCallSeconds % 60).padStart(2, '0')}`;
+      }, 1000);
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        capMediaRecorder = new MediaRecorder(stream);
+        capMediaRecorder.ondataavailable = e => { if (e.data.size > 0) capAudioChunks.push(e.data); };
+        capMediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            await cloudPush('call_recordings', {
+              rideId, callerRole: "Captain",
+              callerName: `${localStorage.getItem('yourride_captain_name') || 'Captain'} (${localStorage.getItem('yourride_captain_id') || 'CAP'})`,
+              receiverName: riderName, durationSec: capCallSeconds,
+              timestamp: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+              audioData: reader.result
+            });
+          };
+          reader.readAsDataURL(new Blob(capAudioChunks, { type: 'audio/webm' }));
+        };
+        capMediaRecorder.start();
+        document.getElementById('capCallMicStatus').innerText = "🎙️ Connected & Recording to HQ Cloud...";
+      } catch (err) {
+        document.getElementById('capCallMicStatus').innerText = "🔒 Virtual Call Connected (Mic permission not granted)";
+      }
+    }
+
+    async function endCapMaskedCall() {
+      clearInterval(capCallTimer);
+      if (capMediaRecorder && capMediaRecorder.state !== 'inactive') capMediaRecorder.stop();
+      document.getElementById('capMaskedCallModal').style.display = 'none';
+      alert(`📵 Call Ended (${capCallSeconds}s). Recording HQ Ledger par save ho gayi hai.`);
+    }
+
+    let capLastChatCount = 0;
+    function openCapChatModal() {
+      const dot = document.getElementById('capChatUnreadBadge');
+      if (dot) dot.style.display = 'none';
+      document.getElementById('capInAppChatModal').style.display = 'flex';
+      syncCapChatMessages();
+    }
+    function closeCapChatModal() { document.getElementById('capInAppChatModal').style.display = 'none'; }
+    async function sendCapQuickMsg(txt) { document.getElementById('capChatInput').value = txt; await sendCapChatMsg(); }
+    async function sendCapChatMsg() {
+      const inp = document.getElementById('capChatInput'), text = inp.value.trim();
+      if (!text) return;
+      const rideId = (currentCapRideObj && currentCapRideObj.rideId) ? currentCapRideObj.rideId : "RID-LIVE";
+      inp.value = '';
+      await cloudPush(`ride_chats/${rideId}`, { senderRole: 'Captain', senderName: localStorage.getItem('yourride_captain_name') || 'Captain', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      syncCapChatMessages();
+    }
+    async function syncCapChatMessages() {
+      const rideId = (currentCapRideObj && currentCapRideObj.rideId) ? currentCapRideObj.rideId : null;
+      if (!rideId) return;
+      const msgs = Object.values(await cloudGet(`ride_chats/${rideId}`) || {});
+      if (msgs.length > capLastChatCount && document.getElementById('capInAppChatModal').style.display !== 'flex') {
+        const dot = document.getElementById('capChatUnreadBadge');
+        if (msgs[msgs.length - 1]?.senderRole === 'Rider' && dot) dot.style.display = 'inline-block';
+      }
+      capLastChatCount = msgs.length;
+      const box = document.getElementById('capChatMessagesBox');
+      box.innerHTML = msgs.length === 0 ? '<div style="text-align:center; color:#64748b; font-size:11px; margin-top:70px;">🔒 Number share kiye bina Rider ko message karein...</div>'
+        : msgs.map(m => `<div class="chat-msg ${m.senderRole === 'Captain' ? 'me' : 'other'}">${m.text}<span class="chat-meta">${m.senderRole} • ${m.time}</span></div>`).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function relocateCaptainGPS() {
+      const statusTxt = document.getElementById('mapStatusText');
+      if (!navigator.geolocation) return;
+      statusTxt.innerText = "📡 Live GPS location dhundh rahe hain...";
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        if (capMap) {
+          capMap.setView([lat, lon], 15);
+          if (capMarker) capMap.removeLayer(capMarker);
+          capMarker = L.marker([lat, lon]).addTo(capMap).bindPopup("🚖 Aapki Current Live Location").openPopup();
+        }
+        let areaLabel = `GPS (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          const data = await res.json();
+          if (data && data.display_name) areaLabel = data.display_name.split(',').slice(0, 2).join(',').trim();
+        } catch (e) {}
+        statusTxt.innerText = `📍 Live: ${areaLabel}`;
+        document.getElementById('gmapsNavLink').href = `https://www.google.com/maps?q=${lat},${lon}`;
+        const capId = localStorage.getItem('yourride_captain_id');
+        if (capId) await cloudPatch(`captains/${capId}`, { lat, lon, area: areaLabel });
+      }, () => { statusTxt.innerText = "⚠️ GPS Permission denied."; }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    let goHomeActive = localStorage.getItem('yourride_cap_go_home_active') === 'true';
+    let capHomeLocation = JSON.parse(localStorage.getItem('yourride_cap_home_loc') || 'null');
+    let homeSearchTimer = null;
+
+    function searchCaptainHomeAddress(query) {
+      clearTimeout(homeSearchTimer);
+      const box = document.getElementById('homeSuggestionsBox'), q = (query || '').trim();
+      if (q.length < 2) { box.style.display = 'none'; return; }
+      homeSearchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ', NCR India')}&countrycodes=in&limit=5`);
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) { box.style.display = 'none'; return; }
+          box.innerHTML = data.map(p => {
+            const shortName = p.display_name.split(',').slice(0, 3).join(',').trim();
+            return `<div class="home-sug-item" onclick="selectHomeSuggestion('${shortName.replace(/'/g, "")}', ${p.lat}, ${p.lon})">🏠 ${shortName}</div>`;
+          }).join('');
+          box.style.display = 'block';
+        } catch (e) {}
+      }, 300);
+    }
+
+    function selectHomeSuggestion(address, lat, lon) {
+      document.getElementById('capHomeAddressInput').value = address;
+      document.getElementById('homeSuggestionsBox').style.display = 'none';
+      capHomeLocation = { address, lat: parseFloat(lat), lon: parseFloat(lon) };
+      localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation));
+      updateGoHomeUI();
+    }
+
+    function setCaptainHomeFromGPS() {
+      if (!navigator.geolocation) return;
+      const inp = document.getElementById('capHomeAddressInput');
+      inp.value = "GPS se ghar ki location le rahe hain...";
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        let addr = `Home GPS (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          const data = await res.json();
+          if (data && data.display_name) addr = data.display_name.split(',').slice(0, 3).join(',').trim();
+        } catch (e) {}
+        inp.value = addr;
+        capHomeLocation = { address: addr, lat, lon };
+        localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation));
+        updateGoHomeUI();
+      });
+    }
+
+    function saveCaptainHomeLocation() {
+      const val = document.getElementById('capHomeAddressInput').value.trim();
+      if (!val) { alert("Ghar ka address dalein."); return; }
+      if (!capHomeLocation || capHomeLocation.address !== val) capHomeLocation = { address: val, lat: 28.6852, lon: 77.3396 };
+      localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation));
+      updateGoHomeUI(); alert("✅ Ghar ki location save ho gayi!");
+    }
+
+    function toggleGoBackHomeMode() {
+      const val = document.getElementById('capHomeAddressInput').value.trim();
+      if (!capHomeLocation && !val) { alert("⚠️ Pehle ghar ka address set karein!"); return; }
+      if (!capHomeLocation && val) { capHomeLocation = { address: val, lat: 28.6852, lon: 77.3396 }; localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation)); }
+      goHomeActive = !goHomeActive;
+      localStorage.setItem('yourride_cap_go_home_active', goHomeActive);
+      updateGoHomeUI(); toggleCapMenu(false); checkIncomingRidesFromCloud();
+    }
+
+    function disableGoBackHomeMode() { goHomeActive = false; localStorage.setItem('yourride_cap_go_home_active', 'false'); updateGoHomeUI(); checkIncomingRidesFromCloud(); }
+
+    function updateGoHomeUI() {
+      if (capHomeLocation && capHomeLocation.address) document.getElementById('capHomeAddressInput').value = capHomeLocation.address;
+      const strip = document.getElementById('goHomeActiveStrip'), badge = document.getElementById('drawerHomeModeBadge'), btn = document.getElementById('btnToggleGoHome');
+      if (goHomeActive && capHomeLocation) {
+        strip.style.display = 'flex'; document.getElementById('goHomeTargetLabel').innerText = `Ghar Destination: ${capHomeLocation.address}`;
+        badge.innerText = 'ACTIVE'; badge.style.background = '#10b981'; badge.style.color = '#0b1329';
+        btn.innerText = '⏹️ STOP HOME MODE'; btn.style.background = '#dc2626';
+      } else {
+        strip.style.display = 'none'; badge.innerText = 'OFF'; badge.style.background = '#4c1d95'; badge.style.color = '#e9d5ff';
+        btn.innerText = '🏠 GO BACK HOME'; btn.style.background = '#9333ea';
+      }
+    }
+
+    function getDistanceKmBetweenCoords(lat1, lon1, lat2, lon2) {
+      const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function isRideTowardsCaptainHome(ride) {
+      if (!capHomeLocation) return true;
+      const dropText = (ride.dropAddress || '').toLowerCase();
+      const homeWords = capHomeLocation.address.toLowerCase().split(/[\s,]+/).filter(w => w.length > 3);
+      const textMatched = homeWords.some(w => dropText.includes(w));
+      let distMatched = false;
+      if (ride.dropCoords && capHomeLocation.lat && capHomeLocation.lon) {
+        if (getDistanceKmBetweenCoords(ride.dropCoords[0], ride.dropCoords[1], capHomeLocation.lat, capHomeLocation.lon) <= 6.5) distMatched = true;
+      }
+      return textMatched || distMatched;
+    }
+
+    async function registerInGlobalNetwork(userId, name, role, sponsorId, extraData = {}) {
+      const userObj = { id: userId, name, role, sponsorId: sponsorId || "HQ", earnedBonus: 0, joinedAt: new Date().toLocaleDateString('en-IN'), ...extraData };
+      await cloudSet(`network/${userId}`, userObj);
+      await cloudSet(`captains/${userId}`, userObj);
+    }
+
+    function toggleCapMenu(open) {
+      document.getElementById('sideDrawer').classList.toggle('open', open);
+      document.getElementById('drawerBackdrop').style.display = open ? 'block' : 'none';
+      if (open) {
+        const capId = localStorage.getItem('yourride_captain_id') || 'CAP-NEW';
+        document.getElementById('drawerCapUniqueId').innerText = capId;
+        document.getElementById('drawerCapName').innerText = localStorage.getItem('yourride_captain_name') || 'Captain';
+        const saved = JSON.parse(localStorage.getItem('yourride_captain_docs') || '{}');
+        document.getElementById('drawerCapVeh').innerText = saved.vehNum ? `Cab: ${saved.vehNum}` : 'Cab: Not Set';
+        document.getElementById('drawerTripCount').innerText = getCapHistory().length;
+        updateGoHomeUI();
+        renderCaptainLinkedTeam();
+      }
+    }
+
+    function handleCapBankDoc(input, key) {
+      const file = input.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 650 / img.width);
+          canvas.width = img.width * scale; canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          capBankDocs[key] = canvas.toDataURL('image/jpeg', 0.65);
+          showCapBankPreview(key, capBankDocs[key]);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showCapBankPreview(key, dataUrl) {
+      if (!dataUrl) return;
+      const prev = document.getElementById('prev-' + key), icon = document.getElementById('icon-' + key), box = document.getElementById('box-' + key);
+      prev.src = dataUrl; prev.style.display = 'block'; if (icon) icon.style.display = 'none';
+      box.classList.add('uploaded'); box.querySelector('.doc-hint').innerText = '✅ Uploaded'; box.querySelector('.doc-hint').style.color = '#10b981';
+    }
+
+    function openCapBankModal() {
+      const saved = JSON.parse(localStorage.getItem('yourride_captain_bank_kyc') || '{}');
+      if (saved.aadhaar) document.getElementById('capAadhaarInput').value = saved.aadhaar;
+      if (saved.pan) document.getElementById('capPanInput').value = saved.pan;
+      if (saved.holder) document.getElementById('capAccHolderInput').value = saved.holder;
+      if (saved.accNum) document.getElementById('capAccNumInput').value = saved.accNum;
+      if (saved.ifsc) document.getElementById('capIfscInput').value = saved.ifsc;
+      if (saved.upi) document.getElementById('capUpiInput').value = saved.upi;
+      if (saved.docs) { capBankDocs = { ...capBankDocs, ...saved.docs }; ['capAadhaarFront', 'capAadhaarBack', 'capPanPhoto', 'capBankProof'].forEach(k => showCapBankPreview(k, capBankDocs[k])); }
+      document.getElementById('capBankModal').style.display = 'flex';
+    }
+
+    function closeCapBankModal() { document.getElementById('capBankModal').style.display = 'none'; }
+
+    async function submitCapBankDetails() {
+      const aadhaar = document.getElementById('capAadhaarInput').value.replace(/\s+/g, '');
+      const pan = document.getElementById('capPanInput').value.trim().toUpperCase();
+      const holder = document.getElementById('capAccHolderInput').value.trim();
+      const accNum = document.getElementById('capAccNumInput').value.trim();
+      const ifsc = document.getElementById('capIfscInput').value.trim().toUpperCase();
+      const upi = document.getElementById('capUpiInput').value.trim();
+
+      if (aadhaar.length !== 12 || isNaN(aadhaar)) { alert("Kripya sahi 12-digit ID Number dalein."); return; }
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) { alert("Kripya sahi PAN Number dalein."); return; }
+      if (!holder || accNum.length < 8 || ifsc.length < 11) { alert("Bank details sahi se bharein."); return; }
+
+      const bankPayload = { aadhaar, pan, holder, accNum, ifsc, upi, docs: capBankDocs };
+      localStorage.setItem('yourride_captain_bank_kyc', JSON.stringify(bankPayload));
+      const capId = localStorage.getItem('yourride_captain_id');
+      if (capId) await cloudSet(`captains/${capId}/bankKyc`, bankPayload);
+
+      updateCapBankUI(); closeCapBankModal();
+      alert("✅ Captain Bank, PAN aur ID details Live Cloud par save ho gayi hain!");
+    }
+
+    function updateCapBankUI() {
+      const saved = JSON.parse(localStorage.getItem('yourride_captain_bank_kyc') || 'null');
+      if (saved && saved.accNum) {
+        document.getElementById('capBankStatusBadge').innerHTML = `<span class="kyc-verified">✅ Payout Active (A/c ••••${saved.accNum.slice(-4)})</span>`;
+        document.getElementById('capBankSubText').innerText = `PAN: ${saved.pan} | Cloud Verified`;
+        document.getElementById('capBankBtn').innerText = 'EDIT BANK & ID'; document.getElementById('capBankBtn').style.background = '#059669';
+      }
+      checkCapMenuDot();
+    }
+
+    function checkCapMenuDot() {
+      const cabKyc = localStorage.getItem('yourride_cap_kyc_completed') === 'true';
+      const bankKyc = localStorage.getItem('yourride_captain_bank_kyc');
+      document.getElementById('capMenuDot').style.display = (cabKyc && bankKyc) ? 'none' : 'block';
+    }
+
+    function isDateExpired(dateStr) { if (!dateStr) return true; const today = new Date(); today.setHours(0, 0, 0, 0); return new Date(dateStr) < today; }
+    function daysUntilExpiry(dateStr) { const today = new Date(); today.setHours(0, 0, 0, 0); return Math.ceil((new Date(dateStr) - today) / (1000 * 60 * 60 * 24)); }
+
+    function verifyDocDateAI(dateInputId, statusId, docTitle) {
+      const dateVal = document.getElementById(dateInputId).value, statusEl = document.getElementById(statusId);
+      if (!dateVal) return false;
+      statusEl.style.display = 'block';
+      if (isDateExpired(dateVal)) { statusEl.style.color = '#ef4444'; statusEl.innerHTML = `❌ AI Alert: ${docTitle} EXPIRE ho chuka hai (${dateVal})!`; return false; }
+      const daysLeft = daysUntilExpiry(dateVal);
+      statusEl.style.color = daysLeft <= 30 ? '#f59e0b' : '#4ade80';
+      statusEl.innerHTML = daysLeft <= 30 ? `⚠️ AI Warning: ${docTitle} ${daysLeft} din me expire hoga.` : `✅ AI Verified: ${docTitle} Valid hai (${daysLeft} din bache hain).`;
+      return true;
+    }
+
+    function handleAiDocUpload(input, docKey, dateInputId, statusId) {
+      const file = input.files[0]; if (!file) return;
+      const statusEl = document.getElementById(statusId);
+      statusEl.style.display = 'block'; statusEl.style.color = '#38bdf8'; statusEl.innerHTML = `🤖 AI Document Scan kar raha hai...`;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 700 / img.width);
+          canvas.width = img.width * scale; canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          capDocs[docKey] = canvas.toDataURL('image/jpeg', 0.65);
+          document.getElementById('box-' + docKey).classList.add('uploaded');
+          document.getElementById('hint-' + docKey).innerText = '✅ Photo Uploaded'; document.getElementById('hint-' + docKey).style.color = '#4ade80';
+          const dateVal = document.getElementById(dateInputId).value;
+          if (dateVal) verifyDocDateAI(dateInputId, statusId, docKey.toUpperCase());
+          else { statusEl.style.color = '#fde047'; statusEl.innerHTML = `📄 Photo clear hai! Ab bagal me Expiry Date select karein.`; }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleSelfieUpload(input) {
+      const file = input.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 550 / img.width);
+          canvas.width = img.width * scale; canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          capDocs['refSelfie'] = canvas.toDataURL('image/jpeg', 0.65);
+          document.getElementById('box-refSelfie').classList.add('uploaded');
+          document.getElementById('hint-refSelfie').innerText = '✅ Selfie Uploaded'; document.getElementById('hint-refSelfie').style.color = '#4ade80';
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function verifyAndSaveCaptainOnce() {
+      if (localStorage.getItem('yourride_cap_kyc_completed') === 'true') { alert("🔒 Aapke documents pehle hi submit aur lock ho chuke hain!"); return; }
+
+      const name = document.getElementById('capNameInput').value.trim();
+      const phone = document.getElementById('capPhoneInput').value.trim();
+      const sponsorId = document.getElementById('capSponsorIdInput').value.trim().toUpperCase();
+      const vehNum = document.getElementById('capVehInput').value.trim().toUpperCase();
+      const area = document.getElementById('capAreaInput').value.trim() || "Shalimar Garden";
+      const cat = document.getElementById('capCatInput').value;
+
+      const expRc = document.getElementById('exp-capRc').value;
+      const expDl = document.getElementById('exp-capDl').value;
+      const expIns = document.getElementById('exp-capIns').value;
+      const expFit = document.getElementById('exp-capFit').value;
+
+      if (!name || phone.length < 10 || !vehNum) { alert("⚠️ Kripya Captain naam, 10-digit mobile number aur Yellow Plate cab number bharein."); return; }
+      if (!expRc || !expDl || !expIns || !expFit) { alert("⚠️ Kripya RC, DL, Insurance aur Fitness Certificate—chaaron ki Expiry Date select karein."); return; }
+      if (!capDocs.capRc || !capDocs.capDl || !capDocs.capIns || !capDocs.capFit || !capDocs.refSelfie) {
+        alert("⚠️ Kripya sabhi 5 original photos (RC, DL, Insurance, Fitness aur Selfie) upload karein!");
+        return;
+      }
+
+      if (!verifyDocDateAI('exp-capRc', 'status-capRc', 'Yellow Plate RC') ||
+          !verifyDocDateAI('exp-capDl', 'status-capDl', 'Commercial DL') ||
+          !verifyDocDateAI('exp-capIns', 'status-capIns', 'Cab Insurance') ||
+          !verifyDocDateAI('exp-capFit', 'status-capFit', 'Fitness Certificate')) {
+        alert("🚫 AI Verification Failed! Aapka ek ya zyada document EXPIRE ho chuka hai.");
+        return;
+      }
+
+      if (!confirm("⚠️ Kya aap sure hain? Submit karte hi aapke sabhi documents PERMANENTLY LOCK ho jayenge aur aap unhe dobara change nahi kar sakenge.")) return;
+
+      const btn = document.getElementById('submitKycLockBtn');
+      btn.innerText = "⏳ UPLOADING ORIGINAL PHOTOS TO HQ CLOUD...";
+      btn.disabled = true;
+
+      const myCapId = "CAP-" + Math.floor(1000 + Math.random() * 9000);
+      localStorage.setItem('yourride_captain_id', myCapId);
+      localStorage.setItem('yourride_captain_name', name);
+      localStorage.setItem('yourride_captain_phone', phone);
+      localStorage.setItem('yourride_cap_kyc_completed', 'true');
+      localStorage.setItem('yourride_captain_docs', JSON.stringify({
+        capId: myCapId, sponsorId: sponsorId || "HQ", vehNum, cat, area,
+        expiryDates: { rc: expRc, dl: expDl, ins: expIns, fit: expFit },
+        locked: true
+      }));
+
+      await registerInGlobalNetwork(myCapId, name, "Captain", sponsorId || "HQ", {
+        phone, vehNum, vehType: cat, area, km: 0, wallet: 50,
+        status: "PENDING_HQ", docsLocked: true,
+        lat: 28.6852, lon: 77.3396,
+        expiryDates: { rc: expRc, dl: expDl, ins: expIns, fit: expFit },
+        docImages: capDocs
+      });
+      localStorage.removeItem('yourride_pending_sponsor');
+
+      alert(`🔒✅ Documents Submitted & Permanently Locked!\n\nAapki Unique Captain ID: ${myCapId}\nCompany HQ dwara aapke original documents verify hote hi aapki duty shuru ho jayegi.`);
+      showMainCaptainDashboard();
+    }
+
+    function showMainCaptainDashboard() {
+      const myCapId = localStorage.getItem('yourride_captain_id') || "CAP-" + Math.floor(1000 + Math.random() * 9000);
+      localStorage.setItem('yourride_captain_id', myCapId);
+
+      document.getElementById('headerCapIdBadge').innerText = `ID: ${myCapId}`;
+      document.getElementById('cardCapUniqueId').innerText = myCapId;
+      document.getElementById('drawerCapUniqueId').innerText = myCapId;
+
+      document.getElementById('kycOnboardingSection').style.display = 'none';
+      document.getElementById('captainDashboardSection').style.display = 'block';
+      checkCapMenuDot();
+      updateGoHomeUI();
+      renderCaptainLinkedTeam();
+      checkCaptainHqApprovalFromCloud();
+      loadCapOffersAndBroadcasts();
+      setTimeout(() => { initCaptainMap(); relocateCaptainGPS(); }, 120);
+      checkUpcomingExpiries();
+    }
+
+    function checkUpcomingExpiries() {
+      const saved = JSON.parse(localStorage.getItem('yourride_captain_docs') || '{}');
+      if (!saved.expiryDates) return;
+      const d = saved.expiryDates, alerts = [];
+      if (isDateExpired(d.rc)) alerts.push("Yellow Plate RC EXPIRE ho gaya hai!");
+      if (isDateExpired(d.dl)) alerts.push("Commercial DL EXPIRE ho gaya hai!");
+      if (isDateExpired(d.ins)) alerts.push("Cab Insurance EXPIRE ho gaya hai!");
+      if (isDateExpired(d.fit)) alerts.push("Gaadi ka Fitness Certificate EXPIRE ho gaya hai!");
+      const banner = document.getElementById('expiryAlertBanner');
+      if (alerts.length > 0) {
+        banner.style.display = 'block';
+        banner.innerHTML = `🚨 <strong>AI Document Alert:</strong> ${alerts.join(' ')}`;
+        isOnDuty = false; toggleDutyUIOnly();
+      } else { banner.style.display = 'none'; }
+    }
+
+    function initCaptainMap() {
+      if (capMap) { capMap.invalidateSize(); return; }
+      const defaultCoords = [28.6852, 77.3396];
+      capMap = L.map('captainMap').setView(defaultCoords, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(capMap);
+      capMarker = L.marker(defaultCoords).addTo(capMap).bindPopup("🚖 Aapki Live Location").openPopup();
+    }
+
+    function updateWalletUI() {
+      document.getElementById('capWalletBal').innerText = `₹ ${walletBalance.toFixed(2)}`;
+      const badge = document.getElementById('passStatusBadge');
+      if (passActive && walletBalance >= 1) { badge.className = 'pass-badge'; badge.innerText = '✅ ₹1/Day Pass Active'; }
+      else { badge.className = 'pass-badge expired'; badge.innerText = '⚠️ Pass Inactive'; }
+    }
+
+    async function rechargeWallet() {
+      const amt = parseFloat(prompt("Wallet recharge amount dalein (₹):", "100"));
+      if (amt && amt > 0) {
+        await saveCaptainWalletToCloud(walletBalance + amt);
+        alert(`✅ ₹${amt} wallet me add ho gaye aur Cloud par sync ho gaye!`);
+      }
+    }
+
+    async function activateDailyPass() {
+      if (walletBalance < 1) { alert("Insufficient balance! HQ Ledger se wallet recharge karwayein."); return; }
+      passActive = true;
+      localStorage.setItem('yourride_cap_pass', 'true');
+      await saveCaptainWalletToCloud(walletBalance - 1);
+      alert("✅ Aaj ka ₹1/Day SaaS Pass activate ho gaya hai!");
+    }
+
+    function toggleDutyUIOnly() {
+      const btn = document.getElementById('dutyToggleBtn'), title = document.getElementById('dutyTitle'), sub = document.getElementById('dutySubText');
+      if (!isHqApproved) {
+        btn.className = 'btn-duty duty-off'; btn.innerText = 'LOCKED';
+        title.innerText = '⏳ HQ Verification Pending';
+        sub.innerText = 'Company dwara documents verify hote hi duty ON hogi';
+        return;
+      }
+      if (isOnDuty) { btn.className = 'btn-duty duty-on'; btn.innerText = 'ON DUTY'; title.innerText = '🟢 Aap ON-DUTY Hain'; sub.innerText = '● Live Cloud Connected — Local & Outstation rides active'; }
+      else { btn.className = 'btn-duty duty-off'; btn.innerText = 'OFF DUTY'; title.innerText = '🔴 Aap OFF-DUTY Hain'; sub.innerText = 'Rides lene ke liye ON DUTY karein'; }
+    }
+
+    async function toggleDuty() {
+      if (!isHqApproved) {
+        alert("⏳ Aapke documents abhi Company HQ ke paas verification ke liye pending hain.");
+        checkCaptainHqApprovalFromCloud();
+        return;
+      }
+      isOnDuty = !isOnDuty;
+      toggleDutyUIOnly();
+      const capId = localStorage.getItem('yourride_captain_id');
+      if (capId) await cloudPatch(`captains/${capId}`, { status: isOnDuty ? 'ACTIVE' : 'OFFLINE' });
+      checkIncomingRidesFromCloud();
+    }
+
+    async function checkIncomingRidesFromCloud() {
+      const box = document.getElementById('liveRideContainer');
+      if (!isHqApproved || !isOnDuty) { box.innerHTML = ''; return; }
+      const ride = await cloudGet('live_ride');
+      if (!ride || !ride.rideId) {
+        currentCapRideObj = null;
+        box.innerHTML = goHomeActive && capHomeLocation
+          ? `<div class="card" style="text-align:center; color:#e9d5ff; border-color:#a855f7; font-size:12.5px;">🏠 <strong>Go Home Mode:</strong> ${capHomeLocation.address} ke side ki rides dhundh rahe hain...</div>`
+          : `<div class="card" style="text-align:center; color:#94a3b8; font-size:12.5px;">🔍 Live Cloud par Local & Outstation rides ka intezar kar rahe hain...</div>`;
+        if (rideRouteLine && capMap) { capMap.removeLayer(rideRouteLine); rideRouteLine = null; }
+        return;
+      }
+
+      currentCapRideObj = ride;
+      const isOutstation = ride.bookingCategory === 'OUTSTATION';
+
+      if (ride.status === 'PENDING' && goHomeActive && capHomeLocation && !isOutstation) {
+        if (!isRideTowardsCaptainHome(ride)) {
+          box.innerHTML = `<div class="card" style="text-align:center; color:#d8b4fe; border-color:#7e22ce; font-size:12px;">🏠 <strong>Go Home Filter Active:</strong> Ek doosri side ki ride skip ki gayi. Ghar (${capHomeLocation.address}) ke side ki ride ka intezar hai...</div>`;
+          return;
+        }
+      }
+
+      if (ride.pickupCoords && capMap) {
+        capMap.setView(ride.pickupCoords, 13);
+        if (rideRouteLine) capMap.removeLayer(rideRouteLine);
+        if (ride.dropCoords) {
+          rideRouteLine = L.polyline([ride.pickupCoords, ride.dropCoords], { color: isOutstation ? '#fbbf24' : (goHomeActive ? '#e879f9' : '#f59e0b'), weight: 4 }).addTo(capMap);
+          document.getElementById('gmapsNavLink').href = `https://www.google.com/maps/dir/?api=1&origin=${ride.pickupCoords[0]},${ride.pickupCoords[1]}&destination=${ride.dropCoords[0]},${ride.dropCoords[1]}`;
+        }
+      }
+
+      const commButtonsHtml = `
+        <div class="privacy-comm-row">
+          <button type="button" class="btn-masked-call" onclick="startCapMaskedCall()">📞 Masked Call (Rec)</button>
+          <button type="button" class="btn-masked-chat" onclick="openCapChatModal()">
+            💬 Message Rider
+            <span class="chat-unread-dot" id="capChatUnreadBadge">1</span>
+          </button>
+        </div>`;
+
+      if (ride.status === 'PENDING') {
+        const isHomeMatch = goHomeActive && capHomeLocation && !isOutstation;
+        const cardClass = isOutstation ? 'outstation-ride-card' : (isHomeMatch ? 'home-route-match' : '');
+        const osLabel = `${ride.outstationType || 'OUTSTATION'} • ${ride.outstationDays || 1} Day(s)`;
+
+        box.innerHTML = `
+          <div class="ride-req-card ${cardClass}">
+            ${isOutstation ? `<div class="outstation-pill">🛣️ OUTSTATION BOOKING • ${osLabel}</div>` : ''}
+            ${isHomeMatch ? `<div class="home-match-pill">🏠 HOME ROUTE RIDE MATCHED! (${capHomeLocation.address})</div>` : ''}
+            <div class="req-header">
+              <span style="font-size:13px; font-weight:900; color:${isOutstation ? '#fde047' : (isHomeMatch ? '#f0abfc' : '#f59e0b')};">
+                🔔 ${isOutstation ? 'OUTSTATION CAB' : (isHomeMatch ? 'GHAR SIDE KI RIDE' : 'NEW LOCAL RIDE')} (${ride.vehicleType})
+              </span>
+              <span class="req-fare">₹${ride.customerFare}</span>
+            </div>
+            <div class="loc-row">👤 Rider: ${ride.riderName} (${ride.distanceKm} KM) • <span style="color:#6ee7b7; font-size:11px;">Number Protected</span></div>
+            <div class="loc-row">📍 Pickup: ${ride.pickupAddress}</div>
+            <div class="loc-row">🏁 Destination: ${ride.dropAddress}</div>
+            <div class="ride-btn-row">
+              <button class="btn-accept-ride" style="${isOutstation ? 'background:#fbbf24; color:#0b1329;' : (isHomeMatch ? 'background:#e879f9; color:#2e1065;' : '')}" onclick="acceptLiveRide()">✅ ACCEPT RIDE (100% CASH/UPI)</button>
+              <button class="btn-reject-ride" onclick="skipLiveRide()">Skip</button>
+            </div>
+          </div>`;
+      } else if (ride.status === 'ACCEPTED') {
+        box.innerHTML = `
+          <div class="ride-req-card" style="border-color:#10b981;">
+            <div class="req-header"><span style="font-size:13px; font-weight:900; color:#10b981;">🚖 ${isOutstation ? 'OUTSTATION' : 'RIDE'} ACCEPTED • PICKUP RIDER</span><span class="req-fare">₹${ride.customerFare}</span></div>
+            <div class="loc-row">👤 Rider: ${ride.riderName} <span style="font-size:10.5px; color:#6ee7b7;">(🔒 Number Hidden)</span></div>
+            <div class="loc-row">📍 Pickup: ${ride.pickupAddress}</div>
+            <div class="loc-row">🏁 Drop: ${ride.dropAddress}</div>
+            ${commButtonsHtml}
+            <button class="btn-accept-ride" style="width:100%; background:#f59e0b; margin-top:4px;" onclick="verifyRideOtp('${ride.otp}')">🔑 ENTER RIDER OTP & START TRIP</button>
+          </div>`;
+        syncCapChatMessages();
+      } else if (ride.status === 'STARTED') {
+        box.innerHTML = `
+          <div class="ride-req-card" style="border-color:#06b6d4;">
+            <div class="req-header"><span style="font-size:13px; font-weight:900; color:#38bdf8;">🛣️ ${isOutstation ? 'OUTSTATION' : 'TRIP'} IN PROGRESS</span><span class="req-fare">Collect ₹${ride.customerFare}</span></div>
+            <div class="loc-row">🏁 Destination: ${ride.dropAddress}</div>
+            ${commButtonsHtml}
+            <button class="btn-accept-ride" style="width:100%; margin-top:4px;" onclick="completeCaptainRide()">🏁 COMPLETE TRIP & COLLECT CASH</button>
+          </div>`;
+        syncCapChatMessages();
+      }
+    }
+
+    async function acceptLiveRide() {
+      if (!isHqApproved) { alert("⏳ HQ Approval pending hai."); return; }
+      if (!passActive) { alert("Pehle ₹1/Day Pass activate karein!"); return; }
+      const saved = JSON.parse(localStorage.getItem('yourride_captain_docs') || '{}');
+      await cloudPatch('live_ride', {
+        status: 'ACCEPTED',
+        captainId: localStorage.getItem('yourride_captain_id') || 'CAP-101',
+        captainName: localStorage.getItem('yourride_captain_name') || 'Captain',
+        captainVeh: saved.vehNum || 'Yellow Plate Cab'
+      });
+      checkIncomingRidesFromCloud();
+    }
+
+    async function skipLiveRide() {
+      if (confirm("Kya aap is ride request ko skip karna chahte hain?")) {
+        await cloudSet('live_ride', null);
+        checkIncomingRidesFromCloud();
+      }
+    }
+
+    async function verifyRideOtp(correctOtp) {
+      const entered = prompt("Rider se 4-digit OTP puch kar dalein:");
+      if (entered === correctOtp) {
+        await cloudPatch('live_ride', { status: 'STARTED', startedAt: Date.now() });
+        checkIncomingRidesFromCloud();
+        alert("✅ OTP Verified! Safar shuru ho gaya hai.");
+      } else { alert("❌ Galat OTP!"); }
+    }
+
+    function getCapHistory() { return JSON.parse(localStorage.getItem('yourride_cap_history') || '[]'); }
+
+    function updateTodayStats() {
+      const hist = getCapHistory();
+      document.getElementById('statTrips').innerText = hist.length;
+      document.getElementById('statKm').innerText = `${hist.reduce((s, r) => s + (Number(r.km) || 0), 0)} KM`;
+      document.getElementById('statEarn').innerText = `₹ ${hist.reduce((s, r) => s + (Number(r.fare) || 0), 0)}`;
+    }
+
+    async function completeCaptainRide() {
+      const ride = await cloudGet('live_ride');
+      if (ride) {
+        const kmVal = Number(ride.distanceKm) || 0;
+        const totalFare = Number(ride.customerFare) || 0;
+        const bookingFees = Math.round(kmVal * 3);
+        const baseFarePart = Math.max(0, totalFare - bookingFees);
+
+        // Auto-deduct ₹3/KM pool fee from Captain's SaaS Wallet
+        await saveCaptainWalletToCloud(walletBalance - bookingFees);
+
+        await distribute4LevelBonus(ride.riderId || "YR-USER", kmVal);
+        const myCapId = localStorage.getItem('yourride_captain_id');
+        if (myCapId) {
+          await distribute4LevelBonus(myCapId, kmVal);
+          renderCaptainLinkedTeam();
+        }
+
+        const hist = getCapHistory();
+        hist.unshift({ rideId: ride.rideId, date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), pickup: ride.pickupAddress, drop: ride.dropAddress, km: kmVal, fare: totalFare, basePart: baseFarePart, bookingFeePart: bookingFees });
+        localStorage.setItem('yourride_cap_history', JSON.stringify(hist));
+        updateTodayStats();
+
+        document.getElementById('receiptRouteLabel').innerText = `${ride.pickupAddress} → ${ride.dropAddress}`;
+        document.getElementById('receiptKmText').innerText = `${kmVal} KM`;
+        document.getElementById('receiptTotalHighlight').innerText = `₹ ${totalFare}`;
+        document.getElementById('receiptMicroBreakdown').innerText = `${baseFarePart}fare + ${bookingFees}booking fees = ${totalFare}`;
+        document.getElementById('rideCompleteReceiptModal').style.display = 'flex';
+      }
+      await cloudSet('live_ride', null);
+      currentCapRideObj = null;
+      checkIncomingRidesFromCloud();
+    }
+
+    function closeReceiptModal() { document.getElementById('rideCompleteReceiptModal').style.display = 'none'; }
+
+    function openCapHistoryModal() {
+      const hist = getCapHistory();
+      document.getElementById('capHistoryList').innerHTML = hist.length === 0 ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi completed trip nahi hai.</div>' : hist.map(r => {
+        const bFee = r.bookingFeePart !== undefined ? r.bookingFeePart : Math.round((Number(r.km) || 0) * 3);
+        const fPart = r.basePart !== undefined ? r.basePart : Math.max(0, (Number(r.fare) || 0) - bFee);
+        return `<div class="hist-item"><div style="display:flex; justify-content:space-between; align-items:center; font-weight:800; color:#38bdf8;"><span>#${r.rideId} (${r.km} KM)</span><span style="color:#4ade80; font-size:15px;">₹${r.fare}</span></div><div style="font-size:10px; color:#94a3b8; text-align:right; margin-bottom:2px;">${fPart}fare + ${bFee}booking fees = ${r.fare}</div><div style="font-size:10.5px; color:#94a3b8; margin-bottom:3px;">🕒 ${r.date}</div><div>📍 ${r.pickup} → 🏁 ${r.drop}</div></div>`;
+      }).join('');
+      document.getElementById('capHistoryModal').style.display = 'flex';
+    }
+
+    async function loadCapProfileAndBroadcast() {
+      const pendingSponsor = localStorage.getItem('yourride_pending_sponsor');
+      if (pendingSponsor) document.getElementById('capSponsorIdInput').value = pendingSponsor;
+
+      await syncCaptainWalletFromCloud();
+      await loadCapOffersAndBroadcasts();
+      updateCapBankUI();
+
+      if (localStorage.getItem('yourride_cap_kyc_completed') === 'true') {
+        showMainCaptainDashboard();
+      } else {
+        document.getElementById('kycOnboardingSection').style.display = 'block';
+        document.getElementById('captainDashboardSection').style.display = 'none';
+      }
+    }
+
+    async function requestCaptainWithdrawal() {
+      const capName = localStorage.getItem('yourride_captain_name') || "Captain";
+      const capId = localStorage.getItem('yourride_captain_id') || "CAP-NEW";
+      const bankSaved = JSON.parse(localStorage.getItem('yourride_captain_bank_kyc') || 'null');
+      if (!bankSaved || !bankSaved.accNum) {
+        if (confirm("⚠️ Referral payout lene ke liye pehle apna Bank Account, PAN aur ID details update karna zaroori hai. Kya abhi update karein?")) openCapBankModal();
+        return;
+      }
+
+      const amt = parseFloat(prompt("Kitna Referral Bonus withdraw karna hai? (Minimum ₹300)", "300"));
+      if (!amt || amt < 300) { alert("Minimum withdrawal limit ₹300 hai."); return; }
+
+      const payoutTarget = bankSaved.upi ? `${bankSaved.upi} (A/c ••••${bankSaved.accNum.slice(-4)})` : `A/c: ${bankSaved.accNum} | IFSC: ${bankSaved.ifsc}`;
+      const wdId = "WD-" + Math.floor(1000 + Math.random() * 9000);
+      await cloudSet(`withdrawals/${wdId}`, { id: wdId, user: `${capName} (${capId})`, amt, upi: payoutTarget, status: "PENDING" });
+      alert(`✅ ₹${amt} ki Payout Request Live Cloud ke zariye HQ ko bhej di gayi hai!`);
+    }
+
+    function shareCapReferral() {
+      const myCapId = localStorage.getItem('yourride_captain_id') || 'CAP-101';
+      const inviteLink = `${window.location.origin}/index.html?ref=${myCapId}`;
+      const msg = encodeURIComponent(`Bhai, YourRide join kar — 0% Commission aur Local + Outstation rides par 4 Levels tak referral income!\nMeri Referral ID: *${myCapId}*\nIs link se join karein (ID automatic link ho jayegi):\n${inviteLink}`);
+      window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
+    }
+
+    window.onload = function() {
+      updateWalletUI();
+      updateTodayStats();
+      loadCapProfileAndBroadcast();
+      setInterval(() => {
+        checkCaptainHqApprovalFromCloud();
+        loadCapOffersAndBroadcasts();
+        checkIncomingRidesFromCloud();
+        renderCaptainLinkedTeam();
+      }, 4000);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YourRide - Rider App</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b1329; color: #f8fafc; padding-bottom: 28px; }
+
+    /* OTP Onboarding Modal */
+    .welcome-screen {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at top, #172554 0%, #090e1f 65%, #050814 100%);
+      z-index: 5000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      padding: 22px 18px; overflow-y: auto;
+    }
+    .welcome-box { width: 100%; max-width: 400px; text-align: center; }
+    .premium-logo-badge {
+      width: 76px; height: 76px; margin: 0 auto 12px; border-radius: 22px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      display: flex; align-items: center; justify-content: center; font-size: 36px;
+      box-shadow: 0 12px 30px rgba(245, 158, 11, 0.35); border: 2px solid #fde68a;
+    }
+    .welcome-brand { font-size: 30px; font-weight: 900; color: #ffffff; margin-bottom: 4px; }
+    .welcome-brand span { color: #f59e0b; }
+    .auth-card { background: #1e293b; border: 1.5px solid #475569; border-radius: 16px; padding: 20px 16px; text-align: left; margin-top: 14px; }
+    .auth-back { background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: 800; cursor: pointer; margin-bottom: 10px; display: inline-block; text-decoration: none; }
+    .auth-title { font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 4px; }
+    .auth-sub { font-size: 12px; color: #94a3b8; margin-bottom: 14px; }
+    .otp-banner { display: none; background: #064e3b; border: 1px solid #10b981; color: #ecfdf5; padding: 10px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; margin-bottom: 12px; }
+    .otp-input-box { letter-spacing: 8px; text-align: center; font-size: 22px !important; font-weight: 900 !important; }
+
+    /* Header & Side Drawer */
+    .header { background: #0f172a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 600; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .menu-btn { background: #1e293b; border: 1px solid #334155; color: #ffffff; font-size: 20px; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+    .menu-dot { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid #0f172a; }
+    .brand { font-size: 21px; font-weight: 900; color: #fff; }
+    .brand span { color: #f59e0b; }
+    .badge-no-surge { background: #f59e0b; color: #0b1329; font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 20px; }
+
+    .drawer-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.78); z-index: 2000; }
+    .side-drawer {
+      position: fixed; top: 0; left: -350px; width: 338px; max-width: 92vw; height: 100%;
+      background: #0f172a; border-right: 1px solid #334155; z-index: 2001;
+      padding: 16px 13px 30px; transition: left 0.25s ease; overflow-y: auto;
+    }
+    .side-drawer.open { left: 0; }
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #1e293b; }
+    .drawer-close { background: #1e293b; border: none; color: #fff; font-size: 18px; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; }
+
+    .my-id-card { background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1px solid #3b82f6; border-radius: 10px; padding: 11px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .drawer-card { background: #1e293b; border-radius: 10px; padding: 11px; margin-bottom: 10px; border: 1px solid #334155; }
+    .kyc-status { font-size: 12.5px; font-weight: 800; margin-bottom: 3px; }
+    .kyc-verified { color: #10b981; }
+    .kyc-pending { color: #f59e0b; }
+    .drawer-sub { font-size: 10.5px; color: #94a3b8; margin-bottom: 8px; }
+    .btn-drawer-full { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 11.5px; font-weight: 800; color: #fff; cursor: pointer; }
+
+    /* 4-Level Drawer Referral Network Tree */
+    .drawer-net-section { background: #0b1329; border: 1.5px solid #0e7490; border-radius: 10px; padding: 11px; margin-top: 6px; }
+    .dnet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .dnet-title { font-size: 13px; font-weight: 900; color: #22d3ee; }
+    .privacy-pill { background: #064e3b; color: #6ee7b7; font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 10px; }
+    .dnet-search { width: 100%; background: #1e293b; border: 1px solid #475569; color: #ffffff; padding: 8px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; outline: none; margin-bottom: 8px; }
+    .level-pills-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; text-align: center; }
+    .lvl-pill-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 5px 2px; cursor: pointer; }
+    .lvl-pill-title { font-size: 9px; color: #94a3b8; font-weight: 800; }
+    .lvl-pill-rate { font-size: 10px; color: #4ade80; font-weight: 900; }
+    .lvl-pill-cnt { font-size: 9.5px; color: #fde047; font-weight: 700; }
+    .lvl-filter-strip { display: flex; gap: 4px; margin-bottom: 8px; }
+    .lvl-fbtn { flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-size: 10px; font-weight: 800; padding: 5px 2px; border-radius: 5px; cursor: pointer; }
+    .lvl-fbtn.active { background: #0284c7; color: #fff; border-color: #38bdf8; }
+    .tree-sub-item { background: #0f172a; border: 1px solid #1e293b; border-left: 3px solid #06b6d4; border-radius: 7px; padding: 8px 9px; margin-bottom: 6px; font-size: 11px; }
+    .member-id-badge { display: inline-block; background: #1e293b; color: #f59e0b; border: 1px solid #475569; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; }
+    .lvl-tag { display: inline-block; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 4px; background: #0e7490; color: #fff; margin-right: 4px; }
+    .tree-metrics-row { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 4px 7px; border-radius: 5px; margin-top: 5px; font-size: 10px; }
+
+    .container { padding: 12px 16px; max-width: 540px; margin: 0 auto; }
+
+    .hq-broadcast-banner {
+      display: none; background: linear-gradient(90deg, #78350f 0%, #1e293b 100%);
+      border: 1.5px solid #f59e0b; color: #fef3c7; padding: 9px 12px; border-radius: 9px;
+      font-size: 11.5px; font-weight: 800; margin-bottom: 10px; line-height: 1.4;
+    }
+
+    .safety-strip { display: flex; gap: 10px; margin-bottom: 12px; }
+    .btn-safety { flex: 1; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 800; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-sos { background: #dc2626; color: #fff; }
+    .btn-share-loc { background: #059669; color: #fff; }
+
+    /* Map */
+    .map-wrapper { border-radius: 12px; overflow: hidden; border: 1.5px solid #334155; margin-bottom: 12px; background: #1e293b; }
+    .map-tap-bar { background: #0f172a; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; gap: 6px; }
+    .map-tap-hint { font-size: 11.5px; font-weight: 800; color: #e2e8f0; }
+    .tap-mode-btns { display: flex; gap: 4px; }
+    .tap-mode-btn { background: #1e293b; border: 1px solid #475569; color: #94a3b8; font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 6px; cursor: pointer; }
+    .tap-mode-btn.active-drop { background: #f59e0b; color: #0b1329; border-color: #f59e0b; }
+    .tap-mode-btn.active-pickup { background: #0284c7; color: #ffffff; border-color: #0284c7; }
+    .map-container { height: 195px; position: relative; z-index: 1; }
+    #rideMap { width: 100%; height: 100%; cursor: crosshair; }
+    .map-nav-btn { position: absolute; bottom: 24px; right: 12px; z-index: 800; width: 44px; height: 44px; border-radius: 50%; background: #0284c7; border: 2px solid #ffffff; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    /* Easy Ride Mode Switcher */
+    .ride-mode-switcher {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      background: #0f172a; padding: 6px; border-radius: 12px;
+      border: 1.5px solid #334155; margin-bottom: 14px;
+    }
+    .mode-switch-btn {
+      padding: 11px 8px; border-radius: 9px; border: none;
+      font-size: 13.5px; font-weight: 900; cursor: pointer;
+      background: transparent; color: #94a3b8;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .mode-switch-btn.active-local { background: #10b981; color: #0b1329; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .mode-switch-btn.active-outstation { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #0b1329; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35); }
+
+    /* Outstation Trip Options Box */
+    .outstation-config-box {
+      display: none; background: rgba(245, 158, 11, 0.08);
+      border: 1.5px solid #f59e0b; border-radius: 10px;
+      padding: 11px; margin-bottom: 12px;
+    }
+    .os-type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 8px; }
+    .os-pill-btn { background: #0f172a; border: 1.5px solid #475569; color: #cbd5e1; padding: 8px; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .os-pill-btn.active { background: #f59e0b; color: #0b1329; border-color: #fde68a; }
+    .os-days-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: #fde68a; font-weight: 800; }
+    .os-days-select { background: #0f172a; border: 1.5px solid #f59e0b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; font-weight: 800; outline: none; }
+
+    /* Booking Card */
+    .card { background: #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #334155; }
+    .card-title { font-size: 17px; font-weight: 900; margin-bottom: 12px; color: #fff; }
+    .form-group { margin-bottom: 13px; position: relative; }
+    .form-group label { display: block; font-size: 13px; font-weight: 800; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+    .input-with-btn { display: flex; gap: 8px; }
+    .form-control { width: 100%; background: #0f172a; border: 2px solid #475569; color: #ffffff; padding: 12px 13px; border-radius: 8px; font-size: 16.5px; font-weight: 700; outline: none; }
+    .form-control:focus { border-color: #f59e0b; }
+    .btn-gps { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 0 14px; font-size: 20px; cursor: pointer; flex-shrink: 0; }
+
+    .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: #0f172a; border: 2px solid #f59e0b; border-radius: 10px; margin-top: 4px; max-height: 260px; overflow-y: auto; z-index: 9999; box-shadow: 0 14px 32px rgba(0, 0, 0, 0.9); display: none; }
+    .suggestion-item { padding: 12px 14px; border-bottom: 1px solid #1e293b; cursor: pointer; font-size: 15px; font-weight: 800; color: #ffffff; }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-sub { display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-top: 3px; }
+    .sug-tag { display: inline-block; background: #1e3a8a; color: #93c5fd; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+
+    .quick-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 4px; scrollbar-width: none; }
+    .quick-chips::-webkit-scrollbar { display: none; }
+    .chip { background: #0f172a; border: 1.5px solid #475569; color: #f8fafc; padding: 7px 12px; border-radius: 18px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+    .chip.os-city { border-color: #f59e0b; color: #fde68a; }
+
+    #vehicleAndFareStepBox {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1.5px dashed #334155;
+      animation: fadeSlideIn 0.25s ease-out;
+    }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .veh-section-lbl { font-size: 12px; font-weight: 800; color: #cbd5e1; text-transform: uppercase; margin: 4px 0 8px; display: flex; justify-content: space-between; align-items: center; }
+    .veh-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .veh-option { background: #0f172a; border: 2px solid #334155; border-radius: 11px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .veh-option.selected { border-color: #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, #0f172a 100%); }
+    .veh-left { display: flex; align-items: center; gap: 11px; }
+    .veh-icon { font-size: 28px; width: 42px; text-align: center; }
+    .veh-name { font-size: 15px; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 6px; }
+    .seat-pill { font-size: 10.5px; background: #1e293b; color: #cbd5e1; padding: 2px 6px; border-radius: 5px; font-weight: 800; }
+    .veh-desc { font-size: 11.5px; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+    .veh-right { text-align: right; }
+    .veh-price { font-size: 18px; font-weight: 900; color: #4ade80; }
+    .veh-strike { font-size: 11.5px; color: #ef4444; text-decoration: line-through; font-weight: 700; display: block; }
+
+    .coming-soon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 10px; }
+    .cs-card { background: rgba(15, 23, 42, 0.65); border: 1.5px dashed #475569; border-radius: 10px; padding: 8px 6px; text-align: center; cursor: pointer; opacity: 0.85; }
+    .cs-icon { font-size: 22px; display: block; margin-bottom: 2px; }
+    .cs-name { font-size: 12.5px; font-weight: 800; color: #e2e8f0; display: block; }
+    .cs-badge { display: inline-block; margin-top: 3px; background: #78350f; color: #fde68a; font-size: 9px; font-weight: 900; padding: 2px 5px; border-radius: 4px; }
+
+    .promo-box-row { display: flex; gap: 7px; margin: 10px 0 8px; }
+    .promo-input { flex: 1; background: #0f172a; border: 1.5px dashed #f59e0b; color: #fde047; padding: 9px 11px; border-radius: 8px; font-size: 13px; font-weight: 900; text-transform: uppercase; outline: none; }
+    .btn-apply-promo { background: #f59e0b; color: #0b1329; border: none; padding: 0 14px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; }
+
+    .clean-fare-card { background: #0f172a; border-radius: 10px; padding: 13px; margin-top: 6px; border: 1.5px solid #334155; }
+    .fare-grid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .fare-item { text-align: left; }
+    .fare-lbl { font-size: 11px; color: #cbd5e1; font-weight: 800; text-transform: uppercase; }
+    .fare-num { font-size: 19px; font-weight: 900; color: #ffffff; }
+    .other-app-strike { font-size: 13px; color: #ef4444; text-decoration: line-through; font-weight: 800; display: block; text-align: right; }
+    .fare-total-val { font-size: 24px; font-weight: 900; color: #10b981; text-align: right; line-height: 1.15; }
+    .fare-km-tag { font-size: 14px; font-weight: 900; color: #38bdf8; }
+    .toll-auto-strip {
+      display: none; background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #7dd3fc; font-size: 11.5px; font-weight: 800; padding: 6px 9px; border-radius: 6px; margin-bottom: 7px; text-align: center;
+    }
+    .saving-note { background: #fef3c7; color: #92400e; font-size: 12.5px; font-weight: 900; text-align: center; padding: 8px; border-radius: 6px; margin-top: 6px; }
+    .jam-policy-note { font-size: 11.5px; color: #38bdf8; text-align: center; font-weight: 700; margin-top: 7px; }
+    .btn-main { width: 100%; background: #f59e0b; color: #0b1329; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+
+    /* Active Ride Card */
+    .active-ride-card { display: none; background: linear-gradient(135deg, #172554 0%, #0f172a 100%); border: 2px solid #3b82f6; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .ar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #1e3a8a; padding-bottom: 8px; }
+    .ar-title { font-size: 14px; font-weight: 900; color: #60a5fa; }
+    .ar-otp { background: #f59e0b; color: #0b1329; font-size: 12px; font-weight: 900; padding: 3px 8px; border-radius: 6px; }
+    .captain-assigned-box { background: #0f172a; border: 1.5px solid #10b981; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+    .cap-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .cap-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #10b981; background: #1e293b; flex-shrink: 0; }
+    .privacy-comm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-masked-call { background: #10b981; color: #0b1329; border: none; padding: 9px; border-radius: 7px; font-size: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .btn-masked-chat { background: #0284c7; color: #fff; border: none; padding: 9px; border-radius: 7px; font-size: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; position: relative; }
+    .chat-unread-dot { display: none; position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 10px; }
+
+    .jam-box { background: #0b1329; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .jam-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .jam-timer-val { font-size: 17px; font-weight: 900; color: #f8fafc; }
+    .jam-free-badge { background: #059669; color: #fff; font-size: 10.5px; font-weight: 800; padding: 3px 7px; border-radius: 5px; }
+    .jam-charge-badge { background: #dc2626; color: #fff; font-size: 10.5px; font-weight: 800; padding: 3px 7px; border-radius: 5px; }
+    .jam-split-info { font-size: 11px; color: #cbd5e1; line-height: 1.4; background: #1e293b; padding: 7px 9px; border-radius: 6px; margin-top: 4px; }
+    .btn-finish-ride { width: 100%; background: #10b981; color: #0b1329; border: none; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 900; cursor: pointer; margin-top: 4px; }
+    .btn-cancel-ride {
+      width: 100%; background: rgba(220, 38, 38, 0.16); color: #fca5a5;
+      border: 1.5px solid #ef4444; padding: 9px; border-radius: 8px;
+      font-size: 12.5px; font-weight: 900; cursor: pointer; margin-top: 7px;
+    }
+
+    .cancel-reason-item {
+      background: #0f172a; border: 1.5px solid #334155; border-radius: 9px;
+      padding: 11px 12px; margin-bottom: 8px; font-size: 13px; font-weight: 700;
+      color: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 9px;
+    }
+    .cancel-reason-item.selected {
+      border-color: #ef4444; background: rgba(239, 68, 68, 0.16); color: #fecaca;
+    }
+
+    /* 4-Level Network Card */
+    .network-card { background: linear-gradient(135deg, #0e3b43 0%, #06232b 100%); border: 1.5px solid #06b6d4; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .net-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .net-title { font-size: 13px; font-weight: 800; color: #67e8f9; }
+    .net-payout { font-size: 15px; font-weight: 900; color: #4ade80; }
+    .depth-grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .depth-box { background: rgba(15, 23, 42, 0.75); padding: 7px 8px; border-radius: 6px; border: 1px solid rgba(6, 182, 212, 0.3); cursor: pointer; }
+    .depth-lbl { font-size: 10.5px; color: #94a3b8; font-weight: 800; }
+    .depth-val { font-size: 12px; font-weight: 900; color: #f8fafc; margin-top: 1px; }
+    .depth-rate { font-size: 10px; color: #f59e0b; font-weight: 700; }
+    .btn-invite-wa { width: 100%; background: #25d366; color: #fff; border: none; padding: 9px; border-radius: 6px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+    /* Modals */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; padding: 12px; overflow-y: auto; }
+    .modal-body { background: #1e293b; border-radius: 14px; padding: 16px; width: 100%; max-width: 390px; border: 1px solid #334155; max-height: 92vh; overflow-y: auto; }
+    .modal-input { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 10px 11px; border-radius: 6px; font-size: 14px; font-weight: 600; outline: none; }
+    .modal-textarea { width: 100%; background: #0f172a; border: 1.5px solid #475569; color: #fff; padding: 10px 11px; border-radius: 8px; font-size: 13.5px; font-weight: 600; outline: none; resize: vertical; min-height: 82px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hist-item { background: #0f172a; border: 1px solid #334155; border-radius: 9px; padding: 10px; margin-bottom: 8px; }
+
+    .call-pulse-ring {
+      width: 78px; height: 78px; margin: 10px auto 12px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981;
+      display: flex; align-items: center; justify-content: center; font-size: 34px;
+      animation: pulseGlow 1.4s infinite;
+    }
+    @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); } 70% { box-shadow: 0 0 0 18px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+    .rec-badge { display: inline-block; background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: 12px; margin-bottom: 8px; }
+    .chat-messages-box { height: 230px; overflow-y: auto; background: #0b1329; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .chat-msg { max-width: 82%; padding: 8px 11px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; }
+    .chat-msg.me { align-self: flex-end; background: #0284c7; color: #fff; border-bottom-right-radius: 2px; }
+    .chat-msg.other { align-self: flex-start; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-bottom-left-radius: 2px; }
+    .chat-meta { font-size: 9px; opacity: 0.75; margin-top: 2px; display: block; }
+    .quick-msg-strip { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 8px; scrollbar-width: none; }
+    .q-msg-chip { background: #0f172a; border: 1px solid #475569; color: #cbd5e1; font-size: 10.5px; padding: 4px 8px; border-radius: 12px; white-space: nowrap; cursor: pointer; }
+
+    .star-rating-row { display: flex; justify-content: center; gap: 10px; margin: 12px 0; }
+    .star-btn { font-size: 34px; background: none; border: none; cursor: pointer; color: #475569; }
+    .star-btn.active { color: #f59e0b; }
+    .tag-chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; justify-content: center; }
+    .rev-tag-chip { background: #0f172a; border: 1px solid #475569; color: #cbd5e1; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 16px; cursor: pointer; }
+    .rev-tag-chip.selected { background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #fde047; }
+
+    .doc-section-title { font-size: 11.5px; font-weight: 800; color: #f59e0b; text-transform: uppercase; margin: 12px 0 8px; border-top: 1px solid #334155; padding-top: 10px; }
+    .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .doc-upload-box { background: #0f172a; border: 1.5px dashed #475569; border-radius: 8px; padding: 8px; text-align: center; cursor: pointer; position: relative; min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+    .doc-upload-box.uploaded { border-color: #10b981; border-style: solid; }
+    .doc-upload-box input[type="file"] { display: none; }
+    .doc-label { font-size: 10.5px; font-weight: 700; color: #cbd5e1; margin-top: 4px; }
+    .doc-hint { font-size: 9px; color: #64748b; }
+    .doc-preview { width: 100%; height: 56px; object-fit: cover; border-radius: 4px; display: none; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- Rider OTP Login -->
+  <div class="welcome-screen" id="welcomeScreen">
+    <div class="welcome-box">
+      <div class="premium-logo-badge">🚖</div>
+      <div class="welcome-brand">Your<span>Ride</span> Rider</div>
+
+      <div class="auth-card">
+        <a href="index.html" class="auth-back">← Wapas Role Chunein</a>
+        <div class="auth-title">Rider Account Banayein</div>
+        <div class="auth-sub">Apna naam aur mobile number dalein, OTP verify hote hi aapki Unique Rider ID ban jayegi.</div>
+
+        <div id="stepMobileBox">
+          <div class="form-group">
+            <label style="font-size: 11px;">Aapka Pura Naam *</label>
+            <input type="text" class="modal-input" id="regName" placeholder="Jaise: Aaditya Middha">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px;">10-Digit Mobile Number *</label>
+            <input type="tel" class="modal-input" id="regPhone" maxlength="10" placeholder="98XXXXXXXX">
+          </div>
+          <div class="form-group" style="background: rgba(245, 158, 11, 0.1); padding: 9px; border-radius: 8px; border: 1px dashed #f59e0b;">
+            <label style="font-size: 11px; color: #fde047;">🤝 Aapko Kisne Refer Kiya? (Referral ID - Optional)</label>
+            <input type="text" class="modal-input" id="regRefId" style="text-transform: uppercase;" placeholder="Jaise: YR-101 ya CAP-101">
+          </div>
+          <button type="button" class="btn-main" onclick="sendRiderOTP()">OTP BHEJEIN & VERIFY KAREIN</button>
+        </div>
+
+        <div id="stepOtpBox" style="display: none;">
+          <div class="otp-banner" id="otpSmsAlert"></div>
+          <div class="form-group">
+            <label style="font-size: 11px;">4-Digit OTP Dalein</label>
+            <input type="tel" class="modal-input otp-input-box" id="regOtpInput" maxlength="4" placeholder="••••">
+          </div>
+          <button type="button" class="btn-main" style="background: #10b981; color: #fff;" onclick="verifyRiderOTP()">VERIFY OTP & CREATE ID</button>
+          <button type="button" class="auth-back" style="margin-top: 10px; width: 100%; text-align: center;" onclick="resetOtpStep()">Number Badlein / Dobara OTP Bhejein</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3-LINE SIDE DRAWER MENU -->
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="toggleMenu(false)"></div>
+  <div class="side-drawer" id="sideDrawer">
+    <div class="drawer-header">
+      <div class="brand">Your<span>Ride</span> Menu</div>
+      <button class="drawer-close" onclick="toggleMenu(false)">✕</button>
+    </div>
+
+    <div class="my-id-card">
+      <div>
+        <div style="font-size: 10px; color: #93c5fd; font-weight: 800; text-transform: uppercase;">Meri Unique Rider ID</div>
+        <div style="font-size: 16px; font-weight: 900; color: #ffffff;" id="drawerRiderId">YR-NEW</div>
+        <div style="font-size: 11px; color: #cbd5e1; font-weight: 700;" id="drawerRiderName">Guest Rider</div>
+        <div style="font-size: 10px; color: #fde047; font-weight: 700; margin-top: 2px;">Sponsor: <span id="drawerRiderSponsor">Direct (HQ)</span></div>
+      </div>
+      <button type="button" onclick="logoutRider()" style="background:#1e293b; border:1px solid #475569; color:#f8fafc; font-size:10px; font-weight:800; padding:6px 8px; border-radius:6px; cursor:pointer;">Switch Role</button>
+    </div>
+
+    <!-- 24x7 IVR HELP & SUPPORT CHAT INSIDE SIDE DRAWER -->
+    <div class="drawer-card" style="border-color: #06b6d4; background: linear-gradient(135deg, rgba(6, 182, 212, 0.16) 0%, #1e293b 100%);">
+      <div class="kyc-status" style="color: #22d3ee;">🎧 24x7 IVR Help & Support Chat</div>
+      <div class="drawer-sub">Kiraya, Captain, Referral ya Safety se judi kisi bhi problem ka turant samadhan payein</div>
+      <button class="btn-drawer-full" style="background: #0284c7;" onclick="toggleMenu(false); openIvrHelpModal();">💬 OPEN IVR HELP CHAT</button>
+    </div>
+
+    <!-- COMPLETE 4-LEVEL NETWORK STRUCTURE + KM & INCOME PER MEMBER -->
+    <div class="drawer-net-section" style="margin-bottom: 10px;">
+      <div class="dnet-header">
+        <div class="dnet-title">🌳 Mera Full Network & Income</div>
+        <span class="privacy-pill" id="drawerTotalTeamBadge">0 Team</span>
+      </div>
+
+      <div style="background:#0f172a; border:1px solid #10b981; border-radius:7px; padding:7px 9px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:10.5px; color:#cbd5e1; font-weight:700;">Total Team KM: <strong style="color:#38bdf8;" id="drawerTotalTeamKm">0 KM</strong></span>
+        <span style="font-size:11px; color:#4ade80; font-weight:900;" id="drawerTotalNetIncome">₹ 0.00</span>
+      </div>
+
+      <div class="level-pills-4">
+        <div class="lvl-pill-box" onclick="setDrawerLevelFilter(1)"><div class="lvl-pill-title">L1 Direct</div><div class="lvl-pill-rate">₹0.50/KM</div><div class="lvl-pill-cnt" id="dCntL1">0</div></div>
+        <div class="lvl-pill-box" onclick="setDrawerLevelFilter(2)"><div class="lvl-pill-title">Level 2</div><div class="lvl-pill-rate">₹0.30/KM</div><div class="lvl-pill-cnt" id="dCntL2">0</div></div>
+        <div class="lvl-pill-box" onclick="setDrawerLevelFilter(3)"><div class="lvl-pill-title">Level 3</div><div class="lvl-pill-rate">₹0.15/KM</div><div class="lvl-pill-cnt" id="dCntL3">0</div></div>
+        <div class="lvl-pill-box" onclick="setDrawerLevelFilter(4)"><div class="lvl-pill-title">Level 4</div><div class="lvl-pill-rate">₹0.05/KM</div><div class="lvl-pill-cnt" id="dCntL4">0</div></div>
+      </div>
+
+      <div class="lvl-filter-strip">
+        <button type="button" class="lvl-fbtn active" id="fbtn-0" onclick="setDrawerLevelFilter(0)">All</button>
+        <button type="button" class="lvl-fbtn" id="fbtn-1" onclick="setDrawerLevelFilter(1)">L1</button>
+        <button type="button" class="lvl-fbtn" id="fbtn-2" onclick="setDrawerLevelFilter(2)">L2</button>
+        <button type="button" class="lvl-fbtn" id="fbtn-3" onclick="setDrawerLevelFilter(3)">L3</button>
+        <button type="button" class="lvl-fbtn" id="fbtn-4" onclick="setDrawerLevelFilter(4)">L4</button>
+      </div>
+
+      <input type="text" class="dnet-search" id="networkSearchInput" placeholder="🔍 Naam, ID ya Sponsor search karein..." oninput="renderReferralTree(this.value)" />
+      <div id="referralTreeContainer"></div>
+    </div>
+
+    <div class="drawer-card" style="border-color: #8b5cf6;">
+      <div class="kyc-status" style="color: #c4b5fd;">🏦 Team Bonus Withdraw (Min ₹300)</div>
+      <div class="drawer-sub">Available Referral Wallet: <strong style="color:#4ade80;" id="drawerRefWallet">₹ 0.00</strong></div>
+      <button class="btn-drawer-full" style="background: #8b5cf6;" onclick="toggleMenu(false); requestRiderWithdrawal();">💸 REQUEST PAYOUT (₹300+)</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #0284c7;">
+      <div class="kyc-status" style="color: #38bdf8;">📜 Meri Ride History (<span id="drawerRideCount">0</span> Trips)</div>
+      <div class="drawer-sub">Apni purani rides, route, distance aur bill dekhein</div>
+      <button class="btn-drawer-full" style="background: #0284c7;" onclick="toggleMenu(false); openRiderHistoryModal();">VIEW RIDE HISTORY</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, #1e293b 100%);">
+      <div class="kyc-status" style="color: #fbbf24;">💡 Suggest / Feedback Bhejein</div>
+      <div class="drawer-sub">App ko behtar banane ke liye apna sujhav seedha HQ ko bhejein</div>
+      <button class="btn-drawer-full" style="background: #f59e0b; color: #0b1329;" onclick="toggleMenu(false); openSuggestModal();">✍️ WRITE SUGGESTION</button>
+    </div>
+
+    <div class="drawer-card">
+      <div class="kyc-status" id="kycStatusBadge"><span class="kyc-pending">⚠️ Rider KYC: Pending</span></div>
+      <div class="drawer-sub">Surakshit aur fast booking ke liye verify karein</div>
+      <button class="btn-drawer-full" style="background: #3b82f6;" id="kycBtn" onclick="toggleMenu(false); openKycModal();">VERIFY RIDER NOW</button>
+    </div>
+
+    <div class="drawer-card" style="border-color: #6d28d9;">
+      <div class="kyc-status" id="bankStatusBadge"><span class="kyc-pending">🏦 Bank / PAN / ID: Pending</span></div>
+      <div class="drawer-sub" id="bankSubText">Referral income sidha bank me pane ke liye documents upload karein</div>
+      <button class="btn-drawer-full" style="background: #8b5cf6;" id="bankBtn" onclick="toggleMenu(false); openBankModal();">UPDATE BANK & DOCS</button>
+    </div>
+  </div>
+
+  <!-- MAIN PAGE -->
+  <div class="header">
+    <div class="header-left">
+      <button class="menu-btn" onclick="toggleMenu(true)" aria-label="Menu">
+        ☰
+        <span class="menu-dot" id="menuAlertDot"></span>
+      </button>
+      <div class="brand">Your<span>Ride</span></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button type="button" onclick="openIvrHelpModal()" style="background:#0284c7; color:#fff; border:none; font-size:11px; font-weight:800; padding:5px 9px; border-radius:20px; cursor:pointer;">🎧 IVR Help</button>
+      <div class="badge-no-surge" id="headerRiderIdBadge">● Live Cloud</div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="hq-broadcast-banner" id="hqBroadcastBanner"></div>
+
+    <div class="safety-strip">
+      <button class="btn-safety btn-sos" onclick="triggerSOS()">🚨 SOS EMERGENCY</button>
+      <button class="btn-safety btn-share-loc" onclick="shareLiveLocation()">📍 LIVE LOCATION SHARE</button>
+    </div>
+
+    <div class="map-wrapper">
+      <div class="map-tap-bar">
+        <span class="map-tap-hint">👆 Map par touch karke chunein:</span>
+        <div class="tap-mode-btns">
+          <button type="button" class="tap-mode-btn" id="btnTapPickup" onclick="setMapTapMode('pickup')">📍 Pickup</button>
+          <button type="button" class="tap-mode-btn active-drop" id="btnTapDrop" onclick="setMapTapMode('drop')">🏁 Drop</button>
+        </div>
+      </div>
+      <div class="map-container">
+        <div id="rideMap"></div>
+        <button type="button" class="map-nav-btn" onclick="detectGPSLocation()" title="Meri Live Location">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Ride Card -->
+    <div class="active-ride-card" id="activeRideCard">
+      <div class="ar-header">
+        <div class="ar-title" id="activeRideStatusTitle">🚖 Searching Nearby Captain...</div>
+        <div class="ar-otp" id="activeOtpBadge">OTP: ----</div>
+      </div>
+
+      <div class="captain-assigned-box" id="assignedCaptainBox">
+        <div class="cap-top-row">
+          <img id="assignedCapPhoto" class="cap-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Captain">
+          <div>
+            <div style="font-size: 13.5px; font-weight: 900; color: #ffffff;" id="assignedCapName">Searching Nearby Captain...</div>
+            <div style="font-size: 11px; color: #6ee7b7; font-weight: 800;" id="assignedCapVeh">🚘 Cab • Number Protected</div>
+          </div>
+        </div>
+        <div class="privacy-comm-row">
+          <button type="button" class="btn-masked-call" onclick="startMaskedInAppCall()">📞 Masked Call (Rec)</button>
+          <button type="button" class="btn-masked-chat" onclick="openInAppChatModal()">
+            💬 Message Captain
+            <span class="chat-unread-dot" id="chatUnreadBadge">1</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="jam-box">
+        <div class="jam-row">
+          <div>
+            <div style="font-size: 11px; color: #94a3b8; font-weight: 700;">AUTOMATIC TRIP TIME MONITOR</div>
+            <div class="jam-timer-val" id="jamTimerDisplay">0 min (Est: 40m)</div>
+          </div>
+          <div id="jamStatusBadge" class="jam-free-badge">15 Min Buffer FREE</div>
+        </div>
+        <div class="jam-split-info" id="jamSplitInfo">
+          🚦 Destination pahunchne par agar normal safar se <strong>15 min se zyada extra time</strong> lagta hai, to uske baad <strong>₹0.75/min</strong> automatically bill me add hoga.
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px;">
+        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Final Payable Bill (Inc. Toll):</span>
+        <span style="font-size: 20px; color: #10b981; font-weight: 900;" id="liveFinalBill">₹ 0</span>
+      </div>
+
+      <button type="button" class="btn-finish-ride" onclick="finishActiveRide()">✅ RIDE COMPLETE & RATE CAPTAIN</button>
+      <button type="button" class="btn-cancel-ride" id="riderCancelRideBtn" onclick="openCancelRideModal()">❌ CANCEL RIDE</button>
+    </div>
+
+    <!-- Booking Card -->
+    <div class="card">
+      <div class="ride-mode-switcher">
+        <button type="button" class="mode-switch-btn active-local" id="btnModeLocal" onclick="setBookingMode('LOCAL')">
+          🚖 Local City Ride
+        </button>
+        <button type="button" class="mode-switch-btn" id="btnModeOutstation" onclick="setBookingMode('OUTSTATION')">
+          🛣️ Outstation Cab
+        </button>
+      </div>
+
+      <div class="card-title" id="bookingCardMainTitle">Apni Local Private Ride Book Karein</div>
+
+      <div class="outstation-config-box" id="outstationConfigBox">
+        <div class="os-type-row">
+          <button type="button" class="os-pill-btn active" id="btnOsOneWay" onclick="setOutstationTripType('ONE-WAY')">➡️ One-Way Drop</button>
+          <button type="button" class="os-pill-btn" id="btnOsRoundTrip" onclick="setOutstationTripType('ROUND-TRIP')">🔄 Round Trip (Aana-Jaana)</button>
+        </div>
+        <div class="os-days-row" id="osDaysControlRow" style="display:none;">
+          <span>📅 Kitne Din Ka Safar Hai?</span>
+          <select class="os-days-select" id="osTripDaysSelect" onchange="recalculateCurrentRoute()">
+            <option value="1">1 Day (Same Day Return)</option>
+            <option value="2">2 Days (1 Night Stay)</option>
+            <option value="3">3 Days (2 Nights Stay)</option>
+            <option value="4">4 Days (3 Nights Stay)</option>
+            <option value="5">5 Days (4 Nights Stay)</option>
+            <option value="7">7 Days (6 Nights Stay)</option>
+          </select>
+        </div>
+        <div style="font-size:10.5px; color:#fde68a; margin-top:6px; font-weight:700;" id="osPolicyHint">
+          💡 One-Way Outstation: Sirf ek taraf ka kiraya + State Border Tax.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>📍 Pickup Location (Kahan Se)</label>
+        <div class="input-with-btn">
+          <input type="text" class="form-control" id="pickupInput" value="Shalimar Garden, Sahibabad" placeholder="India ki koi bhi colony, sector ya city likhein..." autocomplete="off" oninput="searchLocation(this.value, 'pickup')" onchange="autoResolveTypedAddress('pickup')" onfocus="setMapTapMode('pickup'); showPopularSuggestions('pickup');">
+          <button type="button" class="btn-gps" onclick="detectGPSLocation()" title="Current GPS Location">🎯</button>
+        </div>
+        <div class="suggestions-list" id="pickupSuggestions"></div>
+      </div>
+
+      <div class="form-group">
+        <label id="dropInputLabel">🏁 Drop Location (Kahan Jana Hai)</label>
+        <input type="text" class="form-control" id="dropInput" placeholder="Kahan jana hai? Area, Metro ya City chunein..." autocomplete="off" oninput="searchLocation(this.value, 'drop')" onchange="autoResolveTypedAddress('drop')" onfocus="setMapTapMode('drop'); showPopularSuggestions('drop');">
+        <div class="suggestions-list" id="dropSuggestions"></div>
+      </div>
+
+      <div class="quick-chips" id="localQuickChips">
+        <button type="button" class="chip" onclick="selectQuickDrop(28.6315, 77.2167, 'Connaught Place, New Delhi')">CP Delhi</button>
+        <button type="button" class="chip" onclick="selectQuickDrop(28.6280, 77.3649, 'Noida Sector 62')">Noida Sec 62</button>
+        <button type="button" class="chip" onclick="selectQuickDrop(28.5708, 77.3271, 'Noida Sector 18')">Noida Sec 18</button>
+        <button type="button" class="chip" onclick="selectQuickDrop(28.6469, 77.3160, 'Anand Vihar ISBT')">Anand Vihar</button>
+        <button type="button" class="chip" onclick="selectQuickDrop(28.5562, 77.1000, 'IGI Airport T3')">Airport T3</button>
+      </div>
+
+      <div class="quick-chips" id="outstationQuickChips" style="display:none;">
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(29.9457, 78.1642, 'Haridwar, Uttarakhand')">🕉️ Haridwar</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(30.0869, 78.2676, 'Rishikesh, Uttarakhand')">🏔️ Rishikesh</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(27.1767, 78.0081, 'Agra (Taj Mahal), UP')">🕌 Agra</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(27.4924, 77.6737, 'Mathura / Vrindavan, UP')">🙏 Mathura-Vrindavan</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(26.9124, 75.7873, 'Jaipur, Rajasthan')">🏰 Jaipur</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(30.3165, 78.0322, 'Dehradun, Uttarakhand')">🌲 Dehradun</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(30.7333, 76.7794, 'Chandigarh')">🏙️ Chandigarh</button>
+        <button type="button" class="chip os-city" onclick="selectQuickDrop(28.9845, 77.7064, 'Meerut, UP')">🛣️ Meerut</button>
+      </div>
+
+      <!-- STEP 2: VEHICLE SELECTOR & FARE -->
+      <div id="vehicleAndFareStepBox">
+        <div class="veh-section-lbl">
+          <span>🚘 Apni Gaadi Chunein</span>
+          <span style="color:#4ade80; font-size:11px;" id="distBadgeSmall">Distance: -- KM</span>
+        </div>
+
+        <div class="veh-list">
+          <div class="veh-option selected" id="veh-hatchback" onclick="selectVehicleType('hatchback')">
+            <div class="veh-left">
+              <div class="veh-icon">🚗</div>
+              <div>
+                <div class="veh-name">Hatchback <span class="seat-pill">👤 4</span></div>
+                <div class="veh-desc">WagonR, Swift, Celerio • Economy Cab</div>
+              </div>
+            </div>
+            <div class="veh-right">
+              <span class="veh-strike" id="strike-hatchback"></span>
+              <div class="veh-price" id="price-hatchback">₹ --</div>
+            </div>
+          </div>
+
+          <div class="veh-option" id="veh-sedan" onclick="selectVehicleType('sedan')">
+            <div class="veh-left">
+              <div class="veh-icon">🚘</div>
+              <div>
+                <div class="veh-name">Sedan <span class="seat-pill">👤 4</span></div>
+                <div class="veh-desc">Dzire, Aura, Amaze • Prime Comfort</div>
+              </div>
+            </div>
+            <div class="veh-right">
+              <span class="veh-strike" id="strike-sedan"></span>
+              <div class="veh-price" id="price-sedan">₹ --</div>
+            </div>
+          </div>
+
+          <div class="veh-option" id="veh-suv6" onclick="selectVehicleType('suv6')">
+            <div class="veh-left">
+              <div class="veh-icon">🚙</div>
+              <div>
+                <div class="veh-name">6-Seater SUV <span class="seat-pill">👤 6</span></div>
+                <div class="veh-desc">Ertiga, Carens, Innova • XL Family</div>
+              </div>
+            </div>
+            <div class="veh-right">
+              <span class="veh-strike" id="strike-suv6"></span>
+              <div class="veh-price" id="price-suv6">₹ --</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="coming-soon-grid" id="localComingSoonGrid">
+          <div class="cs-card" onclick="alert('🏍️ YourRide Bike Taxi jald hi aapke shehar me shuru ho rahi hai!')">
+            <span class="cs-icon">🏍️</span><span class="cs-name">Bike</span><span class="cs-badge">COMING SOON</span>
+          </div>
+          <div class="cs-card" onclick="alert('📦 YourRide Express Parcel delivery service jald shuru ho rahi hai!')">
+            <span class="cs-icon">📦</span><span class="cs-name">Parcel</span><span class="cs-badge">COMING SOON</span>
+          </div>
+          <div class="cs-card" onclick="alert('🛺 YourRide Auto service jald hi aapke area me uplabdh hogi!')">
+            <span class="cs-icon">🛺</span><span class="cs-name">Auto</span><span class="cs-badge">COMING SOON</span>
+          </div>
+        </div>
+
+        <div class="promo-box-row">
+          <input type="text" class="promo-input" id="riderPromoInput" placeholder="🎟️ Promo Code (e.g. FIRST50)">
+          <button type="button" class="btn-apply-promo" onclick="applyPromoCoupon()">APPLY</button>
+        </div>
+        <div id="promoAppliedStatus" style="display:none; font-size:11.5px; color:#4ade80; font-weight:800; margin-bottom:6px;"></div>
+
+        <div class="clean-fare-card">
+          <div class="fare-grid">
+            <div class="fare-item">
+              <div class="fare-lbl" id="selectedVehLabel">Hatchback • Distance</div>
+              <div class="fare-num" id="distLabel">-- KM</div>
+            </div>
+            <div class="fare-item" style="text-align: right;">
+              <div class="fare-lbl">Total Ride Fare</div>
+              <span class="other-app-strike" id="otherAppFare"></span>
+              <div class="fare-total-val" id="totalFare">₹ -- <span class="fare-km-tag" id="fareKmInline"></span></div>
+            </div>
+          </div>
+          <div class="toll-auto-strip" id="autoTollStrip"></div>
+          <div class="saving-note" id="savingNote">🎉 Other App se Sasta! High Captain Acceptance!</div>
+          <div class="jam-policy-note" id="policyBottomNote">🚦 Auto Delay Buffer: 15 min extra time FREE, baad me ₹0.75/min</div>
+        </div>
+
+        <button class="btn-main" id="mainBookBtn" onclick="bookRide()">BOOK YOURRIDE</button>
+      </div>
+    </div>
+
+    <!-- 4-Level Referral Network Card -->
+    <div class="network-card">
+      <div class="net-header">
+        <div class="net-title">🤝 Meri Referral ID: <strong style="color:#fde047;" id="cardRiderUniqueId">YR-NEW</strong></div>
+        <div class="net-payout" id="frontTotalPayout">₹ 0.00</div>
+      </div>
+
+      <div class="depth-grid-4">
+        <div class="depth-box" onclick="toggleMenu(true); setDrawerLevelFilter(1);">
+          <div class="depth-lbl">Level 1 (Direct)</div>
+          <div class="depth-val" id="boxL1Stats">0 Members • 0 KM</div>
+          <div class="depth-rate" id="boxL1Inc">₹0.50/KM • Earned: ₹0.00</div>
+        </div>
+        <div class="depth-box" onclick="toggleMenu(true); setDrawerLevelFilter(2);">
+          <div class="depth-lbl">Level 2 Team</div>
+          <div class="depth-val" id="boxL2Stats">0 Members • 0 KM</div>
+          <div class="depth-rate" id="boxL2Inc">₹0.30/KM • Earned: ₹0.00</div>
+        </div>
+        <div class="depth-box" onclick="toggleMenu(true); setDrawerLevelFilter(3);">
+          <div class="depth-lbl">Level 3 Team</div>
+          <div class="depth-val" id="boxL3Stats">0 Members • 0 KM</div>
+          <div class="depth-rate" id="boxL3Inc">₹0.15/KM • Earned: ₹0.00</div>
+        </div>
+        <div class="depth-box" onclick="toggleMenu(true); setDrawerLevelFilter(4);">
+          <div class="depth-lbl">Level 4 Team</div>
+          <div class="depth-val" id="boxL4Stats">0 Members • 0 KM</div>
+          <div class="depth-rate" id="boxL4Inc">₹0.05/KM • Earned: ₹0.00</div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <button class="btn-invite-wa" style="flex:2;" onclick="shareReferralWhatsApp()">
+          📲 WhatsApp Invite Bhejein
+        </button>
+        <button type="button" onclick="toggleMenu(true)" style="flex:1; background:#0284c7; color:#fff; border:none; border-radius:6px; font-size:11.5px; font-weight:800; cursor:pointer;">
+          🌳 Full Tree
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CANCEL RIDE REASON SELECTION MODAL -->
+  <div class="modal-overlay" id="cancelRideModal">
+    <div class="modal-body" style="border-color: #ef4444;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3 style="font-size: 16px; font-weight: 900; color: #fca5a5;">❌ Ride Cancel Karne Ki Wajah</h3>
+        <button type="button" onclick="closeCancelRideModal()" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size: 11.5px; color: #94a3b8; margin-bottom: 10px;">
+        Kripya neeche diye gaye options mein se ek reason select karein:
+      </p>
+
+      <div id="cancelReasonOptionsList">
+        <div class="cancel-reason-item" onclick="selectCancelReason(this, 'Captain bahut door hai / Zyada time lag raha hai')">
+          <span>⏱️</span> <span>Captain bahut door hai / Zyada time lag raha hai</span>
+        </div>
+        <div class="cancel-reason-item" onclick="selectCancelReason(this, 'Galat Pickup ya Drop location dal gayi')">
+          <span>📍</span> <span>Galat Pickup ya Drop location dal gayi</span>
+        </div>
+        <div class="cancel-reason-item" onclick="selectCancelReason(this, 'Plan badal gaya / Abhi nahi jana hai')">
+          <span>🔄</span> <span>Plan badal gaya / Abhi nahi jana hai</span>
+        </div>
+        <div class="cancel-reason-item" onclick="selectCancelReason(this, 'Captain ne cancel karne ko kaha / Call nahi utha rahe')">
+          <span>🚖</span> <span>Captain ne cancel karne ko kaha / Call nahi utha rahe</span>
+        </div>
+        <div class="cancel-reason-item" onclick="selectCancelReason(this, 'OTHER')">
+          <span>✍️</span> <span>Koi aur wajah (Other reason likhein)</span>
+        </div>
+      </div>
+
+      <div id="customCancelReasonBox" style="display:none; margin-bottom: 10px;">
+        <input type="text" class="modal-input" id="customCancelReasonInput" placeholder="Apni wajah yahan likhein...">
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button type="button" class="btn-safety" style="background: #475569; color: #fff;" onclick="closeCancelRideModal()">Back</button>
+        <button type="button" class="btn-safety" style="flex: 2; background: #dc2626; color: #fff;" onclick="confirmCancelActiveRide()">❌ CONFIRM CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 24x7 INTERACTIVE IVR HELP & SUPPORT CHAT MODAL -->
+  <div class="modal-overlay" id="ivrHelpModal">
+    <div class="modal-body" style="border-color: #06b6d4;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #334155; padding-bottom:6px;">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 900; color: #22d3ee;">🎧 YourRide 24x7 IVR Help Desk</h3>
+          <span style="font-size: 10px; color: #94a3b8;">Apni problem chunein — turant samadhan payein</span>
+        </div>
+        <button type="button" onclick="document.getElementById('ivrHelpModal').style.display='none'" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="chat-messages-box" id="ivrChatStreamBox" style="height: 210px;">
+        <div class="chat-msg other">
+          Namaste! 🙏 Main YourRide IVR Assistant hoon. Neeche diye gaye options mein se apni samasya chunein:
+          <span class="chat-meta">YourRide Auto-Support</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px;">
+        <button type="button" class="q-msg-chip" style="padding:7px; text-align:left; border-radius:7px;" onclick="selectIvrTopic('fare')">💰 Kiraya / Extra Bill Issue</button>
+        <button type="button" class="q-msg-chip" style="padding:7px; text-align:left; border-radius:7px;" onclick="selectIvrTopic('captain')">🚖 Captain Late / Cancel</button>
+        <button type="button" class="q-msg-chip" style="padding:7px; text-align:left; border-radius:7px;" onclick="selectIvrTopic('referral')">🌳 Referral Income / Payout</button>
+        <button type="button" class="q-msg-chip" style="padding:7px; text-align:left; border-radius:7px;" onclick="selectIvrTopic('safety')">🛡️ Safety / Saman Chhoot Gaya</button>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <input type="text" class="modal-input" id="ivrCustomQueryInput" placeholder="Ya apni problem likh kar HQ ticket banayein...">
+        <button type="button" class="btn-apply-promo" style="background:#10b981; color:#0b1329;" onclick="sendIvrCustomTicket()">Ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASKED IN-APP CALL MODAL -->
+  <div class="modal-overlay" id="maskedCallModal">
+    <div class="modal-body" style="text-align: center; border-color: #10b981;">
+      <div class="rec-badge">● CALL RECORDING FOR SAFETY</div>
+      <div class="call-pulse-ring">📞</div>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff;" id="callPartnerTitle">YourRide Captain</h3>
+      <p style="font-size: 11px; color: #6ee7b7; font-weight: 700; margin-top: 3px;">🔒 Virtual Masked Bridge • Phone Number Hidden</p>
+      <div style="font-size: 26px; font-weight: 900; color: #fde047; margin: 12px 0;" id="callTimerLabel">00:00</div>
+      <p style="font-size: 11px; color: #94a3b8; margin-bottom: 14px;" id="callMicStatus">🎙️ Mic Active — Awaaz Cloud HQ par record ho rahi hai...</p>
+      <button type="button" class="btn-safety btn-sos" style="width: 100%; padding: 13px; font-size: 14px;" onclick="endMaskedInAppCall()">📵 END CALL & SAVE RECORDING</button>
+    </div>
+  </div>
+
+  <!-- IN-APP PRIVATE CHAT MODAL -->
+  <div class="modal-overlay" id="inAppChatModal">
+    <div class="modal-body" style="border-color: #0284c7;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 900; color: #38bdf8;">💬 Private Chat with Captain</h3>
+          <span style="font-size: 10px; color: #6ee7b7; font-weight: 700;">🔒 Mobile Number 100% Hidden</span>
+        </div>
+        <button type="button" onclick="closeInAppChatModal()" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="chat-messages-box" id="riderChatMessagesBox"></div>
+
+      <div class="quick-msg-strip">
+        <span class="q-msg-chip" onclick="sendQuickChatMsg('Main pickup point par khada hu')">📍 Pickup par khada hu</span>
+        <span class="q-msg-chip" onclick="sendQuickChatMsg('Kitni der me pahunch rahe hain?')">⏱️ Kitni der lagegi?</span>
+        <span class="q-msg-chip" onclick="sendQuickChatMsg('Gate number 1 par aa jaiye')">🚪 Gate 1 par aayein</span>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <input type="text" class="modal-input" id="riderChatInput" placeholder="Message likhein...">
+        <button type="button" class="btn-apply-promo" style="background:#0284c7; color:#fff;" onclick="sendInAppChatMsg()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OTHER MODALS -->
+  <div class="modal-overlay" id="rateRideModal">
+    <div class="modal-body" style="text-align: center;">
+      <div style="font-size: 36px; margin-bottom: 4px;">🚖✨</div>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 4px;">Rate Your Ride</h3>
+      <p style="font-size: 11.5px; color: #94a3b8; margin-bottom: 6px;" id="rateRideSubInfo">Aapka safar kaisa raha?</p>
+      <div class="star-rating-row" id="starRatingRow">
+        <button type="button" class="star-btn active" onclick="setRideStars(1)">★</button>
+        <button type="button" class="star-btn active" onclick="setRideStars(2)">★</button>
+        <button type="button" class="star-btn active" onclick="setRideStars(3)">★</button>
+        <button type="button" class="star-btn active" onclick="setRideStars(4)">★</button>
+        <button type="button" class="star-btn active" onclick="setRideStars(5)">★</button>
+      </div>
+      <div style="font-size: 12px; font-weight: 900; color: #fde047; margin-bottom: 10px;" id="starRatingText">5 / 5 — Bahut Badhiya Safar!</div>
+      <div class="tag-chips-wrap">
+        <span class="rev-tag-chip selected" onclick="this.classList.toggle('selected')">🧼 Saaf Gaadi</span>
+        <span class="rev-tag-chip selected" onclick="this.classList.toggle('selected')">😊 Polite Captain</span>
+        <span class="rev-tag-chip" onclick="this.classList.toggle('selected')">🛡️ Safe Driving</span>
+        <span class="rev-tag-chip" onclick="this.classList.toggle('selected')">⏱️ On Time</span>
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label style="font-size: 11px;">Apna Review Type Karein *</label>
+        <textarea class="modal-textarea" id="rideReviewTextInput" placeholder="Safar ke baare me likhein..."></textarea>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <button type="button" class="btn-safety" style="background: #475569; color: #fff;" onclick="closeRateRideModal()">Skip</button>
+        <button type="button" class="btn-safety" style="flex: 2; background: #10b981; color: #0b1329;" onclick="submitRideReview()">✅ SUBMIT REVIEW</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="suggestModal">
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h3 style="font-size: 16px; color:#fff;">💡 YourRide Suggestion Box</h3>
+        <button type="button" onclick="closeSuggestModal()" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <div class="form-group">
+        <label style="font-size: 11px;">Category Chunein</label>
+        <select class="modal-input" id="suggestCategoryInput" style="font-weight: 700;">
+          <option value="New Feature / Idea">✨ Naya Feature / App Sujhav</option>
+          <option value="Route / Area Request">📍 Naya Area / Route Shuru Karein</option>
+          <option value="Fare / Billing Feedback">💰 Kiraya / Billing Feedback</option>
+          <option value="Captain / Safety Issue">🛡️ Captain / Safety Complaint</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="font-size: 11px;">Apna Sujhav / Message Likhein *</label>
+        <textarea class="modal-textarea" id="suggestMessageInput" placeholder="Yahan apna sujhav likhein..."></textarea>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button type="button" class="btn-safety" style="background:#475569; color:#fff;" onclick="closeSuggestModal()">Cancel</button>
+        <button type="button" class="btn-safety" style="flex: 2; background:#f59e0b; color:#0b1329;" onclick="submitCustomerSuggestion()">📩 SEND SUGGESTION</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="riderHistoryModal">
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size: 16px; color:#fff;">📜 Meri Ride History</h3>
+        <button type="button" onclick="closeRiderHistoryModal()" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <div id="riderHistoryListContainer"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="kycModal">
+    <div class="modal-body">
+      <h3 style="margin-bottom: 6px; font-size: 15px; color:#fff;">1-Minute Customer KYC</h3>
+      <div class="form-group"><label style="font-size: 11px;">Aapka Pura Naam</label><input type="text" class="modal-input" id="kycName" placeholder="Jaise: Aaditya Middha"></div>
+      <div class="form-group"><label style="font-size: 11px;">Mobile Number</label><input type="tel" class="modal-input" id="kycPhone" maxlength="10" placeholder="10-digit mobile number"></div>
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn-safety btn-sos" style="background:#475569;" onclick="closeKycModal()">Cancel</button>
+        <button class="btn-safety btn-share-loc" onclick="submitKYC()">Verify & Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="bankModal">
+    <div class="modal-body">
+      <h3 style="margin-bottom: 4px; font-size: 15px; color:#fff;">🏦 Bank, PAN & ID Update</h3>
+      <div class="form-group"><label style="font-size: 11px;">12-Digit Government ID Number</label><input type="tel" class="modal-input" id="aadhaarInput" maxlength="12" placeholder="12-digit ID Number"></div>
+      <div class="form-group"><label style="font-size: 11px;">PAN Card Number</label><input type="text" class="modal-input" id="panInput" maxlength="10" style="text-transform: uppercase;" placeholder="ABCDE1234F"></div>
+      <div class="form-group"><label style="font-size: 11px;">Account Holder Name</label><input type="text" class="modal-input" id="accHolderInput" placeholder="Full Name"></div>
+      <div class="form-group"><label style="font-size: 11px;">Bank Account Number</label><input type="tel" class="modal-input" id="accNumInput" placeholder="Account Number dalein"></div>
+      <div class="two-col">
+        <div class="form-group"><label style="font-size: 11px;">IFSC Code</label><input type="text" class="modal-input" id="ifscInput" maxlength="11" style="text-transform: uppercase;" placeholder="SBIN0001234"></div>
+        <div class="form-group"><label style="font-size: 11px;">UPI ID (Optional)</label><input type="text" class="modal-input" id="upiInput" placeholder="name@upi"></div>
+      </div>
+      <div class="doc-section-title">📎 Document Photos Upload Karein</div>
+      <div class="doc-grid">
+        <label class="doc-upload-box" id="box-aadhaarFront">
+          <input type="file" accept="image/*" onchange="handleDocUpload(this, 'aadhaarFront')">
+          <img class="doc-preview" id="prev-aadhaarFront" alt="ID Front">
+          <span class="doc-icon" id="icon-aadhaarFront">🪪</span><span class="doc-label">ID Proof Front</span><span class="doc-hint">Tap to upload</span>
+        </label>
+        <label class="doc-upload-box" id="box-aadhaarBack">
+          <input type="file" accept="image/*" onchange="handleDocUpload(this, 'aadhaarBack')">
+          <img class="doc-preview" id="prev-aadhaarBack" alt="ID Back">
+          <span class="doc-icon" id="icon-aadhaarBack">🪪</span><span class="doc-label">ID Proof Back</span><span class="doc-hint">Tap to upload</span>
+        </label>
+        <label class="doc-upload-box" id="box-panPhoto">
+          <input type="file" accept="image/*" onchange="handleDocUpload(this, 'panPhoto')">
+          <img class="doc-preview" id="prev-panPhoto" alt="PAN Photo">
+          <span class="doc-icon" id="icon-panPhoto">💳</span><span class="doc-label">PAN Card Photo</span><span class="doc-hint">Tap to upload</span>
+        </label>
+        <label class="doc-upload-box" id="box-bankProof">
+          <input type="file" accept="image/*" onchange="handleDocUpload(this, 'bankProof')">
+          <img class="doc-preview" id="prev-bankProof" alt="Cheque or Passbook">
+          <span class="doc-icon" id="icon-bankProof">🏦</span><span class="doc-label">Cheque / Passbook</span><span class="doc-hint">Tap to upload</span>
+        </label>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn-safety btn-sos" style="background:#475569;" onclick="closeBankModal()">Cancel</button>
+        <button class="btn-safety btn-share-loc" onclick="submitBankDetails()">Save Payout KYC</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const FIREBASE_DB_URL = "https://yourridelive-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    async function cloudGet(path) {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+        return await res.json();
+      } catch (e) { return null; }
+    }
+
+    async function cloudSet(path, data) {
+      try {
+        await fetch(`${FIREBASE_DB_URL}/${path}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
+    }
+
+    async function cloudPush(path, data) {
+      try {
+        await fetch(`${FIREBASE_DB_URL}/${path}.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
+    }
+
+    let selectedCancelReason = "";
+
+    function openCancelRideModal() {
+      selectedCancelReason = "";
+      document.querySelectorAll('#cancelReasonOptionsList .cancel-reason-item').forEach(el => el.classList.remove('selected'));
+      document.getElementById('customCancelReasonBox').style.display = 'none';
+      document.getElementById('customCancelReasonInput').value = '';
+      document.getElementById('cancelRideModal').style.display = 'flex';
+    }
+
+    function closeCancelRideModal() {
+      document.getElementById('cancelRideModal').style.display = 'none';
+    }
+
+    function selectCancelReason(el, reasonText) {
+      document.querySelectorAll('#cancelReasonOptionsList .cancel-reason-item').forEach(item => item.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedCancelReason = reasonText;
+      document.getElementById('customCancelReasonBox').style.display = reasonText === 'OTHER' ? 'block' : 'none';
+    }
+
+    async function confirmCancelActiveRide() {
+      if (!selectedCancelReason) {
+        alert("⚠️ Kripya pehle ride cancel karne ka koi ek option select karein.");
+        return;
+      }
+
+      let finalReason = selectedCancelReason;
+      if (selectedCancelReason === 'OTHER') {
+        const customTxt = document.getElementById('customCancelReasonInput').value.trim();
+        if (customTxt.length < 3) {
+          alert("⚠️ Kripya apni wajah likhein.");
+          return;
+        }
+        finalReason = customTxt;
+      }
+
+      const rideSnapshot = activeLiveRideObj || {};
+      await cloudPush('cancelled_rides', {
+        rideId: rideSnapshot.rideId || 'RID-CANCEL',
+        riderId: localStorage.getItem('yourride_rider_id') || 'YR-GUEST',
+        riderName: localStorage.getItem('yourride_kyc_name') || 'Rider',
+        captainId: rideSnapshot.captainId || 'Unassigned',
+        captainName: rideSnapshot.captainName || 'None',
+        reason: finalReason,
+        cancelledAt: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      });
+
+      await cloudSet('live_ride', null);
+      activeLiveRideObj = null;
+      localStorage.removeItem('yourride_trip_started_at');
+      document.getElementById('activeRideCard').style.display = 'none';
+      closeCancelRideModal();
+      alert(`❌ Aapki ride cancel kar di gayi hai.\nWajah: ${finalReason}`);
+    }
+
+    let lastSelectedIvrTopic = "General Help";
+
+    function openIvrHelpModal() {
+      document.getElementById('ivrHelpModal').style.display = 'flex';
+    }
+
+    function appendIvrBubble(text, isUser = false) {
+      const box = document.getElementById('ivrChatStreamBox');
+      const div = document.createElement('div');
+      div.className = `chat-msg ${isUser ? 'me' : 'other'}`;
+      div.innerHTML = `${text}<span class="chat-meta">${isUser ? 'You' : 'IVR Support'} • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function selectIvrTopic(code) {
+      const responses = {
+        fare: {
+          q: "💰 Kiraya ya extra charge se judi samasya",
+          a: "YourRide mein koi hidden surge nahi hai. Agar normal safar se 15 min se zyada traffic delay hota hai tabhi ₹0.75/min judta hai, ya state border toll. Agar galat bill laga ho toh neeche message likh kar Ticket dabayein—HQ team 15 min mein check karegi."
+        },
+        captain: {
+          q: "🚖 Captain late aa rahe hain ya call nahi utha rahe",
+          a: "Aap Active Ride card par '📞 Masked Call' ya '💬 Message Captain' se bina number share kiye baat kar sakte hain. Agar cancel karni ho toh Active Ride card par '❌ CANCEL RIDE' dabakar option chunein."
+        },
+        referral: {
+          q: "🌳 Mera Referral Bonus ya Withdrawal kab aayega?",
+          a: "Jab aapki 4-Level team ka koi member ride complete karta hai, toh ₹0.50 se ₹0.05/KM bonus aapke wallet mein judta hai. ₹300 hote hi Side Menu → 'Request Payout' dabayein—24 ghante mein bank mein transfer ho jata hai."
+        },
+        safety: {
+          q: "🛡️ Cab mein saman chhoot gaya hai ya safety help chahiye",
+          a: "Turant emergency ke liye upar laal '🚨 SOS' button dabayein. Agar cab mein saman chhoot gaya hai toh neeche apna Ride ID likh kar Ticket dabayein—HQ team Captain se turant saman wapas dilwayegi."
+        }
+      };
+
+      const item = responses[code];
+      if (!item) return;
+      lastSelectedIvrTopic = item.q;
+      appendIvrBubble(item.q, true);
+      setTimeout(() => appendIvrBubble(item.a, false), 300);
+    }
+
+    async function sendIvrCustomTicket() {
+      const inp = document.getElementById('ivrCustomQueryInput');
+      const msg = inp.value.trim();
+      if (!msg) { alert("Kripya apni samasya likhein."); return; }
+
+      appendIvrBubble(msg, true);
+      inp.value = '';
+
+      await cloudPush('support_tickets', {
+        riderId: localStorage.getItem('yourride_rider_id') || 'YR-GUEST',
+        riderName: localStorage.getItem('yourride_kyc_name') || 'Rider',
+        topic: lastSelectedIvrTopic,
+        message: msg,
+        status: 'OPEN',
+        date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      });
+
+      setTimeout(() => {
+        appendIvrBubble("✅ Aapka Support Ticket HQ Control Room mein darj ho gaya hai! Hamari team jald hi aapki samasya hal karegi.", false);
+      }, 350);
+    }
+
+    function revealVehicleAndFareSection(show) {
+      const box = document.getElementById('vehicleAndFareStepBox');
+      if (box) box.style.display = show ? 'block' : 'none';
+    }
+
+    let bookingCategoryMode = 'LOCAL';
+    let outstationTripType = 'ONE-WAY';
+
+    function setBookingMode(mode) {
+      bookingCategoryMode = mode;
+      const btnLocal = document.getElementById('btnModeLocal');
+      const btnOs = document.getElementById('btnModeOutstation');
+      const osBox = document.getElementById('outstationConfigBox');
+      const localChips = document.getElementById('localQuickChips');
+      const osChips = document.getElementById('outstationQuickChips');
+      const csGrid = document.getElementById('localComingSoonGrid');
+
+      if (mode === 'OUTSTATION') {
+        btnLocal.className = 'mode-switch-btn';
+        btnOs.className = 'mode-switch-btn active-outstation';
+        osBox.style.display = 'block';
+        localChips.style.display = 'none';
+        osChips.style.display = 'flex';
+        if (csGrid) csGrid.style.display = 'none';
+        document.getElementById('bookingCardMainTitle').innerText = '🛣️ Outstation Intercity Cab Book Karein';
+        document.getElementById('dropInputLabel').innerText = '🏙️ Destination City (Kis Shehar Jana Hai)';
+        document.getElementById('dropInput').placeholder = 'Shehar ka naam likhein (Haridwar, Agra, Jaipur)...';
+        document.getElementById('mainBookBtn').innerText = 'BOOK OUTSTATION CAB';
+      } else {
+        btnLocal.className = 'mode-switch-btn active-local';
+        btnOs.className = 'mode-switch-btn';
+        osBox.style.display = 'none';
+        localChips.style.display = 'flex';
+        osChips.style.display = 'none';
+        if (csGrid) csGrid.style.display = 'grid';
+        document.getElementById('bookingCardMainTitle').innerText = 'Apni Local Private Ride Book Karein';
+        document.getElementById('dropInputLabel').innerText = '🏁 Drop Location (Kahan Jana Hai)';
+        document.getElementById('dropInput').placeholder = 'Kahan jana hai? Area, Metro ya City chunein...';
+        document.getElementById('mainBookBtn').innerText = 'BOOK YOURRIDE';
+      }
+      if (currentRoadKm > 0) updateFareDisplay(currentRoadKm);
+    }
+
+    function setOutstationTripType(type) {
+      outstationTripType = type;
+      document.getElementById('btnOsOneWay').classList.toggle('active', type === 'ONE-WAY');
+      document.getElementById('btnOsRoundTrip').classList.toggle('active', type === 'ROUND-TRIP');
+      document.getElementById('osDaysControlRow').style.display = type === 'ROUND-TRIP' ? 'flex' : 'none';
+      document.getElementById('osPolicyHint').innerText = type === 'ROUND-TRIP'
+        ? '💡 Round Trip: Aana-Jaana distance + ₹250/Night Driver Allowance + State Tax.'
+        : '💡 One-Way Outstation: Sirf ek taraf ka kiraya + State Border Tax.';
+      if (currentRoadKm > 0) updateFareDisplay(currentRoadKm);
+    }
+
+    function recalculateCurrentRoute() {
+      if (currentRoadKm > 0) updateFareDisplay(currentRoadKm);
+    }
+
+    let mediaRecorder = null, audioChunks = [], callTimerInterval = null, callSeconds = 0, activeLiveRideObj = null;
+
+    async function startMaskedInAppCall() {
+      const rideId = (activeLiveRideObj && activeLiveRideObj.rideId) ? activeLiveRideObj.rideId : "RID-LIVE";
+      const capName = (activeLiveRideObj && activeLiveRideObj.captainName) ? activeLiveRideObj.captainName : "YourRide Captain";
+      document.getElementById('callPartnerTitle').innerText = `${capName} (Masked Call)`;
+      document.getElementById('callTimerLabel').innerText = "00:00";
+      document.getElementById('maskedCallModal').style.display = 'flex';
+
+      callSeconds = 0; audioChunks = [];
+      clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        document.getElementById('callTimerLabel').innerText = `${String(Math.floor(callSeconds / 60)).padStart(2, '0')}:${String(callSeconds % 60).padStart(2, '0')}`;
+      }, 1000);
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            await cloudPush('call_recordings', {
+              rideId, callerRole: "Rider",
+              callerName: `${localStorage.getItem('yourride_kyc_name') || 'Rider'} (${localStorage.getItem('yourride_rider_id') || 'YR'})`,
+              receiverName: capName, durationSec: callSeconds,
+              timestamp: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+              audioData: reader.result
+            });
+          };
+          reader.readAsDataURL(new Blob(audioChunks, { type: 'audio/webm' }));
+        };
+        mediaRecorder.start();
+        document.getElementById('callMicStatus').innerText = "🎙️ Connected & Recording to HQ Cloud...";
+      } catch (err) {
+        document.getElementById('callMicStatus').innerText = "🔒 Virtual Call Connected (Mic permission not granted)";
+      }
+    }
+
+    async function endMaskedInAppCall() {
+      clearInterval(callTimerInterval);
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      document.getElementById('maskedCallModal').style.display = 'none';
+      alert(`📵 Call Ended (${callSeconds}s). Suraksha ke liye call recording HQ Ledger par save ho gayi hai.`);
+    }
+
+    let lastChatCount = 0;
+    function openInAppChatModal() { document.getElementById('chatUnreadBadge').style.display = 'none'; document.getElementById('inAppChatModal').style.display = 'flex'; syncInAppChatMessages(); }
+    function closeInAppChatModal() { document.getElementById('inAppChatModal').style.display = 'none'; }
+    async function sendQuickChatMsg(txt) { document.getElementById('riderChatInput').value = txt; await sendInAppChatMsg(); }
+    async function sendInAppChatMsg() {
+      const inp = document.getElementById('riderChatInput'), text = inp.value.trim();
+      if (!text) return;
+      const rideId = (activeLiveRideObj && activeLiveRideObj.rideId) ? activeLiveRideObj.rideId : "RID-LIVE";
+      inp.value = '';
+      await cloudPush(`ride_chats/${rideId}`, { senderRole: 'Rider', senderName: localStorage.getItem('yourride_kyc_name') || 'Rider', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      syncInAppChatMessages();
+    }
+    async function syncInAppChatMessages() {
+      const rideId = (activeLiveRideObj && activeLiveRideObj.rideId) ? activeLiveRideObj.rideId : null;
+      if (!rideId) return;
+      const msgs = Object.values(await cloudGet(`ride_chats/${rideId}`) || {});
+      if (msgs.length > lastChatCount && document.getElementById('inAppChatModal').style.display !== 'flex') {
+        if (msgs[msgs.length - 1]?.senderRole === 'Captain') document.getElementById('chatUnreadBadge').style.display = 'inline-block';
+      }
+      lastChatCount = msgs.length;
+      const box = document.getElementById('riderChatMessagesBox');
+      box.innerHTML = msgs.length === 0 ? '<div style="text-align:center; color:#64748b; font-size:11px; margin-top:70px;">🔒 Number share kiye bina Captain ko seedha message karein...</div>'
+        : msgs.map(m => `<div class="chat-msg ${m.senderRole === 'Rider' ? 'me' : 'other'}">${m.text}<span class="chat-meta">${m.senderRole} • ${m.time}</span></div>`).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    let map, pickupMarker, dropMarker, routeLine;
+    let pickupCoords = [28.6852, 77.3396];
+    let dropCoords = null;
+    let searchTimeout = null;
+    let mapTapMode = 'drop';
+    let generatedLoginOtp = null;
+
+    let selectedStarCount = 5;
+    let lastCompletedRideForReview = null;
+    let appliedPromoDiscount = 0;
+    let appliedPromoCode = "";
+    let selectedDrawerLevel = 0;
+
+    const NCR_LOCAL_PLACES = [
+      { name: "Shalimar Garden Extension 1", sub: "Sahibabad, Ghaziabad", lat: 28.6852, lon: 77.3396 },
+      { name: "Karkardooma Court / Metro Station", sub: "East Delhi", lat: 28.6486, lon: 77.3052 },
+      { name: "Noida Sector 62 (Electronic City)", sub: "NH-24, Noida", lat: 28.6280, lon: 77.3649 },
+      { name: "Indirapuram (Shipra Mall)", sub: "Ghaziabad, UP", lat: 28.6345, lon: 77.3695 },
+      { name: "Anand Vihar ISBT & Railway Station", sub: "East Delhi", lat: 28.6469, lon: 77.3160 },
+      { name: "Connaught Place (Rajiv Chowk)", sub: "Central Delhi", lat: 28.6315, lon: 77.2167 },
+      { name: "IGI Airport Terminal 3 (T3)", sub: "New Delhi Airport", lat: 28.5562, lon: 77.1000 },
+      { name: "Haridwar Railway Station / Har Ki Pauri", sub: "Uttarakhand (Outstation)", lat: 29.9457, lon: 78.1642 },
+      { name: "Rishikesh (Laxman Jhula)", sub: "Uttarakhand (Outstation)", lat: 30.0869, lon: 78.2676 },
+      { name: "Agra (Taj Mahal / Cantt)", sub: "Uttar Pradesh (Outstation)", lat: 27.1767, lon: 78.0081 },
+      { name: "Mathura / Vrindavan", sub: "Uttar Pradesh (Outstation)", lat: 27.4924, lon: 77.6737 },
+      { name: "Jaipur (Pink City)", sub: "Rajasthan (Outstation)", lat: 26.9124, lon: 75.7873 },
+      { name: "Dehradun ISBT", sub: "Uttarakhand (Outstation)", lat: 30.3165, lon: 78.0322 },
+      { name: "Chandigarh Sector 17", sub: "Chandigarh (Outstation)", lat: 30.7333, lon: 76.7794 },
+      { name: "Meerut Cantt / Partapur", sub: "Uttar Pradesh (Outstation)", lat: 28.9845, lon: 77.7064 }
+    ];
+
+    const VEHICLE_RATES = {
+      hatchback: { name: "Hatchback", base: 25, perKm: 12.0, osPerKm: 11.5, otherBase: 45, otherPerKm: 17.5 },
+      sedan:     { name: "Sedan",     base: 35, perKm: 14.5, osPerKm: 13.5, otherBase: 55, otherPerKm: 20.5 },
+      suv6:      { name: "6-Seater SUV", base: 50, perKm: 19.0, osPerKm: 17.5, otherBase: 80, otherPerKm: 26.0 }
+    };
+
+    const SURGE_KEYWORDS = ["airport", "igi", "terminal", "connaught", "cp", "anand vihar", "isbt", "sector 18", "sec 18", "cyber city", "gurugram", "gurgaon"];
+
+    let surgeMultiplier = 1.0;
+    let selectedVehicle = 'hatchback';
+    let currentRoadKm = 0;
+    let billedTotalKm = 0;
+    let expectedTripMinsRider = 40;
+    let baseDriverPart = 0;
+    let poolPassThroughPart = 0;
+    let autoTollCharge = 0;
+    let autoTollLabel = "";
+    let totalCustomerBaseFare = 0;
+    let currentActiveRideMeta = null;
+    let uploadedDocs = { aadhaarFront: "", aadhaarBack: "", panPhoto: "", bankProof: "" };
+
+    async function registerInGlobalNetwork(userId, name, role, sponsorId, phone = "", area = "Shalimar Garden") {
+      const userObj = { id: userId, name, role, phone, area, sponsorId: sponsorId || "HQ", km: 0, earnedBonus: 0, status: "ACTIVE", joinedAt: new Date().toLocaleDateString('en-IN') };
+      await cloudSet(`network/${userId}`, userObj);
+      await cloudSet(`riders/${userId}`, userObj);
+    }
+
+    function build4LevelTreeForUser(myId, netObj) {
+      const all = Object.values(netObj || {});
+      const rates = { 1: 0.50, 2: 0.30, 3: 0.15, 4: 0.05 };
+
+      const enrich = (member, level) => {
+        const sponsorNode = netObj[member.sponsorId];
+        const sponsorLabel = sponsorNode ? `${sponsorNode.name} (${sponsorNode.id})` : (member.sponsorId === myId ? 'You (Direct)' : member.sponsorId || 'HQ');
+        const memberKm = Number(member.km) || 0;
+        const myIncomeFromMember = +(memberKm * rates[level]).toFixed(2);
+        return { ...member, level, rate: rates[level], sponsorLabel, memberKm, myIncomeFromMember };
+      };
+
+      const l1 = all.filter(u => u.sponsorId === myId).map(u => enrich(u, 1));
+      const l1Ids = l1.map(u => u.id);
+      const l2 = all.filter(u => l1Ids.includes(u.sponsorId)).map(u => enrich(u, 2));
+      const l2Ids = l2.map(u => u.id);
+      const l3 = all.filter(u => l2Ids.includes(u.sponsorId)).map(u => enrich(u, 3));
+      const l3Ids = l3.map(u => u.id);
+      const l4 = all.filter(u => l3Ids.includes(u.sponsorId)).map(u => enrich(u, 4));
+
+      const combined = [...l1, ...l2, ...l3, ...l4];
+      const sumKm = arr => +(arr.reduce((s, x) => s + x.memberKm, 0)).toFixed(1);
+      const sumInc = arr => +(arr.reduce((s, x) => s + x.myIncomeFromMember, 0)).toFixed(2);
+
+      return {
+        l1, l2, l3, l4, combined,
+        l1Km: sumKm(l1), l2Km: sumKm(l2), l3Km: sumKm(l3), l4Km: sumKm(l4),
+        l1Inc: sumInc(l1), l2Inc: sumInc(l2), l3Inc: sumInc(l3), l4Inc: sumInc(l4),
+        totalTeamKm: sumKm(combined),
+        totalCalcIncome: sumInc(combined)
+      };
+    }
+
+    function setDrawerLevelFilter(lvl) {
+      selectedDrawerLevel = lvl;
+      [0, 1, 2, 3, 4].forEach(i => {
+        const btn = document.getElementById('fbtn-' + i);
+        if (btn) btn.classList.toggle('active', i === lvl);
+      });
+      renderReferralTree(document.getElementById('networkSearchInput').value);
+    }
+
+    async function updateRiderNetworkStats() {
+      const myId = localStorage.getItem('yourride_rider_id') || 'YR-NEW';
+      const netObj = await cloudGet('network') || {};
+      const me = netObj[myId];
+      const tree = build4LevelTreeForUser(myId, netObj);
+      const storedBonus = me ? (Number(me.earnedBonus) || 0) : 0;
+      const displayTotalIncome = Math.max(storedBonus, tree.totalCalcIncome);
+
+      document.getElementById('cardRiderUniqueId').innerText = myId;
+      document.getElementById('frontTotalPayout').innerText = `₹ ${displayTotalIncome.toFixed(2)}`;
+      document.getElementById('drawerRefWallet').innerText = `₹ ${displayTotalIncome.toFixed(2)}`;
+      document.getElementById('drawerTotalNetIncome').innerText = `Income: ₹ ${displayTotalIncome.toFixed(2)}`;
+      document.getElementById('drawerTotalTeamKm').innerText = `${tree.totalTeamKm} KM`;
+      document.getElementById('drawerTotalTeamBadge').innerText = `${tree.combined.length} Members`;
+      document.getElementById('drawerRiderSponsor').innerText = (me && me.sponsorId && me.sponsorId !== "HQ") ? me.sponsorId : (localStorage.getItem('yourride_referred_by') || "Direct (HQ)");
+
+      document.getElementById('boxL1Stats').innerText = `${tree.l1.length} Log • ${tree.l1Km} KM`;
+      document.getElementById('boxL1Inc').innerText = `₹0.50/KM • Earned: ₹${tree.l1Inc.toFixed(2)}`;
+      document.getElementById('boxL2Stats').innerText = `${tree.l2.length} Log • ${tree.l2Km} KM`;
+      document.getElementById('boxL2Inc').innerText = `₹0.30/KM • Earned: ₹${tree.l2Inc.toFixed(2)}`;
+      document.getElementById('boxL3Stats').innerText = `${tree.l3.length} Log • ${tree.l3Km} KM`;
+      document.getElementById('boxL3Inc').innerText = `₹0.15/KM • Earned: ₹${tree.l3Inc.toFixed(2)}`;
+      document.getElementById('boxL4Stats').innerText = `${tree.l4.length} Log • ${tree.l4Km} KM`;
+      document.getElementById('boxL4Inc').innerText = `₹0.05/KM • Earned: ₹${tree.l4Inc.toFixed(2)}`;
+
+      document.getElementById('dCntL1').innerText = `${tree.l1.length} (${tree.l1Km}km)`;
+      document.getElementById('dCntL2').innerText = `${tree.l2.length} (${tree.l2Km}km)`;
+      document.getElementById('dCntL3').innerText = `${tree.l3.length} (${tree.l3Km}km)`;
+      document.getElementById('dCntL4').innerText = `${tree.l4.length} (${tree.l4Km}km)`;
+    }
+
+    async function renderReferralTree(searchQuery = "") {
+      const container = document.getElementById('referralTreeContainer');
+      const myId = localStorage.getItem('yourride_rider_id') || 'YR-NEW';
+      const netObj = await cloudGet('network') || {};
+      const tree = build4LevelTreeForUser(myId, netObj);
+      const q = searchQuery.trim().toLowerCase();
+
+      let list = tree.combined;
+      if (selectedDrawerLevel > 0) list = list.filter(m => m.level === selectedDrawerLevel);
+      if (q) {
+        list = list.filter(m =>
+          (m.name || '').toLowerCase().includes(q) ||
+          (m.id || '').toLowerCase().includes(q) ||
+          (m.sponsorLabel || '').toLowerCase().includes(q)
+        );
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<div style="font-size:11px; color:#94a3b8; text-align:center; padding:10px;">Is filter mein koi member nahi mila. Apni ID (${myId}) WhatsApp par share karke team badhayein!</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(m => `
+        <div class="tree-sub-item">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>
+              <span class="lvl-tag">L${m.level} • ${m.role === 'Captain' ? '🚖' : '🧳'} ${m.role}</span>
+              <strong>${m.name}</strong>
+            </span>
+            <span class="member-id-badge">${m.id}</span>
+          </div>
+          <div style="font-size:10px; color:#94a3b8; margin-top:3px;">
+            🤝 Joda Gaya (Sponsor): <strong style="color:#e2e8f0;">${m.sponsorLabel}</strong>
+          </div>
+          <div class="tree-metrics-row">
+            <span style="color:#38bdf8; font-weight:800;">🛣️ Rides: ${m.memberKm} KM</span>
+            <span style="color:#4ade80; font-weight:900;">💰 Aapki Income: ₹${m.myIncomeFromMember.toFixed(2)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function requestRiderWithdrawal() {
+      const riderName = localStorage.getItem('yourride_kyc_name') || "Rider";
+      const riderId = localStorage.getItem('yourride_rider_id') || "YR-GUEST";
+      const bankSaved = JSON.parse(localStorage.getItem('yourride_bank_kyc') || 'null');
+      if (!bankSaved || !bankSaved.accNum) {
+        if (confirm("⚠️ Referral payout lene ke liye pehle apna Bank Account, PAN aur ID details update karna zaroori hai. Kya abhi update karein?")) openBankModal();
+        return;
+      }
+
+      const amtStr = prompt("Aap kitna Team Bonus withdraw karna chahte hain? (Minimum ₹300)", "300");
+      const amt = parseFloat(amtStr);
+      if (!amt || amt < 300) { alert("Minimum withdrawal limit ₹300 hai."); return; }
+
+      const payoutTarget = bankSaved.upi ? `${bankSaved.upi} (A/c ••••${bankSaved.accNum.slice(-4)})` : `A/c: ${bankSaved.accNum} | IFSC: ${bankSaved.ifsc}`;
+      const wdId = "WD-" + Math.floor(1000 + Math.random() * 9000);
+      await cloudSet(`withdrawals/${wdId}`, { id: wdId, user: `${riderName} (${riderId})`, amt, upi: payoutTarget, status: "PENDING" });
+      alert(`✅ ₹${amt} ki Payout Request Live Cloud ke zariye HQ ko bhej di gayi hai!`);
+    }
+
+    async function loadHqBroadcastsAndSlabs() {
+      const myRiderId = localStorage.getItem('yourride_rider_id');
+      const personalOffer = myRiderId ? await cloudGet(`personal_offers/${myRiderId}`) : null;
+      const broadcast = await cloudGet('latest_broadcast');
+      const banner = document.getElementById('hqBroadcastBanner');
+
+      if (personalOffer && personalOffer.msg) {
+        banner.style.display = 'block';
+        banner.style.background = 'linear-gradient(90deg, #581c87 0%, #1e1b4b 100%)';
+        banner.style.borderColor = '#e879f9';
+        banner.style.color = '#f3e8ff';
+        banner.innerHTML = `🎁 <strong>${personalOffer.title || 'VIP Personal Offer'}:</strong> ${personalOffer.msg}`;
+      } else if (broadcast && broadcast.msg && (broadcast.target === 'All Riders' || broadcast.target.includes('Zone'))) {
+        banner.style.display = 'block';
+        banner.style.background = 'linear-gradient(90deg, #78350f 0%, #1e293b 100%)';
+        banner.style.borderColor = '#f59e0b';
+        banner.style.color = '#fef3c7';
+        banner.innerHTML = `📣 <strong>YourRide Offer:</strong> ${broadcast.msg}`;
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    async function applyPromoCoupon() {
+      const code = document.getElementById('riderPromoInput').value.trim().toUpperCase();
+      if (!code) { alert("Kripya promo code dalein."); return; }
+      const cloudCoupons = await cloudGet('coupons') || {};
+      const found = cloudCoupons[code] || (code === 'FIRST50' ? { code: 'FIRST50', amt: 50 } : null);
+      const statusEl = document.getElementById('promoAppliedStatus');
+
+      if (!found) {
+        appliedPromoDiscount = 0; appliedPromoCode = "";
+        statusEl.style.display = 'block'; statusEl.style.color = '#ef4444';
+        statusEl.innerText = `❌ Invalid Promo Code (${code})`;
+      } else {
+        appliedPromoDiscount = Number(found.amt) || 0; appliedPromoCode = found.code;
+        statusEl.style.display = 'block'; statusEl.style.color = '#4ade80';
+        statusEl.innerText = `✅ Coupon "${found.code}" Applied! ₹${appliedPromoDiscount} Discount milega.`;
+      }
+      if (currentRoadKm > 0) updateFareDisplay(currentRoadKm);
+    }
+
+    function openSuggestModal() { document.getElementById('suggestMessageInput').value = ''; document.getElementById('suggestModal').style.display = 'flex'; }
+    function closeSuggestModal() { document.getElementById('suggestModal').style.display = 'none'; }
+
+    async function submitCustomerSuggestion() {
+      const cat = document.getElementById('suggestCategoryInput').value;
+      const msg = document.getElementById('suggestMessageInput').value.trim();
+      if (msg.length < 4) { alert("Kripya apna sujhav likhein."); return; }
+
+      await cloudPush('suggestions', {
+        riderId: localStorage.getItem('yourride_rider_id') || "YR-GUEST",
+        riderName: localStorage.getItem('yourride_kyc_name') || "Rider",
+        category: cat, message: msg,
+        date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      });
+      closeSuggestModal();
+      alert("✅ Dhanyavaad! Aapka suggestion YourRide HQ team ke paas pahunch gaya hai.");
+    }
+
+    function setRideStars(count) {
+      selectedStarCount = count;
+      document.querySelectorAll('#starRatingRow .star-btn').forEach((b, idx) => b.classList.toggle('active', idx < count));
+      const labels = { 1: "1 / 5 — Kharab Anubhav", 2: "2 / 5 — Sudhar Ki Zaroorat", 3: "3 / 5 — Thik-Thak Safar", 4: "4 / 5 — Accha Safar Raha", 5: "5 / 5 — Bahut Badhiya Safar!" };
+      document.getElementById('starRatingText').innerText = labels[count] || "5 / 5";
+    }
+
+    function openRateRideModal(rideMeta, finalPaid) {
+      lastCompletedRideForReview = { ...rideMeta, finalPaid };
+      setRideStars(5); document.getElementById('rideReviewTextInput').value = '';
+      document.getElementById('rateRideSubInfo').innerText = `Trip #${rideMeta.rideId} (${rideMeta.km} KM • ₹${finalPaid}) — Captain ko rate karein:`;
+      document.getElementById('rateRideModal').style.display = 'flex';
+    }
+
+    function closeRateRideModal() { document.getElementById('rateRideModal').style.display = 'none'; }
+
+    async function submitRideReview() {
+      const reviewText = document.getElementById('rideReviewTextInput').value.trim();
+      const selectedTags = Array.from(document.querySelectorAll('#rateRideModal .rev-tag-chip.selected')).map(el => el.innerText);
+
+      await cloudPush('reviews', {
+        rideId: lastCompletedRideForReview ? lastCompletedRideForReview.rideId : "RID-LIVE",
+        riderId: localStorage.getItem('yourride_rider_id') || "YR-GUEST",
+        riderName: localStorage.getItem('yourride_kyc_name') || "Rider",
+        stars: selectedStarCount, tags: selectedTags, reviewText: reviewText || selectedTags.join(', '),
+        date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      });
+      closeRateRideModal();
+      alert(`⭐ Shukriya! Aapki ${selectedStarCount}-Star Rating aur Review HQ ko bhej diya gaya hai.`);
+    }
+
+    function isInsideDelhiBorder(coords, textLower) {
+      const delhiWords = ["delhi", "connaught", "anand vihar", "laxmi nagar", "preet vihar", "kashmere gate", "karol bagh", "nizamuddin", "lajpat", "aiims", "saket", "airport", "igi", "dwarka", "rajouri", "rohini", "dilshad", "shahdara", "mayur vihar", "karkardooma", "kadkadduma"];
+      if (delhiWords.some(w => textLower.includes(w))) return true;
+      if (coords && coords[1] < 77.325 && coords[0] > 28.50 && coords[0] < 28.74 && coords[1] > 77.04) return true;
+      return false;
+    }
+
+    function detectRouteToll(oneWayKm) {
+      if (bookingCategoryMode === 'OUTSTATION' || oneWayKm >= 60) {
+        autoTollCharge = 350;
+        autoTollLabel = "Interstate Border Tax & Highway Toll";
+        return;
+      }
+      const pText = (document.getElementById('pickupInput').value || "").toLowerCase();
+      const dText = (document.getElementById('dropInput').value || "").toLowerCase();
+      const combined = pText + " " + dText;
+
+      const pickupInDelhi = isInsideDelhiBorder(pickupCoords, pText);
+      const dropInDelhi = isInsideDelhiBorder(dropCoords, dText);
+
+      if (!pickupInDelhi && dropInDelhi) { autoTollCharge = 100; autoTollLabel = "MCD Delhi Border Toll Tax"; return; }
+      if (combined.includes("gurugram") || combined.includes("gurgaon") || combined.includes("cyber city") || combined.includes("huda city")) { autoTollCharge = 85; autoTollLabel = "Gurugram Highway Toll Tax"; return; }
+      if (combined.includes("pari chowk") || combined.includes("greater noida")) { autoTollCharge = 60; autoTollLabel = "Expressway Toll Tax"; return; }
+      autoTollCharge = 0; autoTollLabel = "";
+    }
+
+    function evaluateLiveSurge() {
+      if (bookingCategoryMode === 'OUTSTATION') { surgeMultiplier = 1.0; return; }
+      const pText = (document.getElementById('pickupInput').value || "").toLowerCase();
+      const dText = (document.getElementById('dropInput').value || "").toLowerCase();
+      const combined = pText + " " + dText;
+      const isHighDemandZone = SURGE_KEYWORDS.some(k => combined.includes(k));
+      const hour = new Date().getHours();
+      const isPeakTime = (hour >= 8 && hour <= 11) || (hour >= 17 && hour <= 21);
+
+      if (isHighDemandZone) surgeMultiplier = 1.15;
+      else if (isPeakTime) surgeMultiplier = 1.10;
+      else surgeMultiplier = 1.0;
+    }
+
+    function checkFirstTimeLogin() {
+      const riderId = localStorage.getItem('yourride_rider_id');
+      const riderName = localStorage.getItem('yourride_kyc_name');
+      const pendingRef = localStorage.getItem('yourride_pending_sponsor');
+      if (pendingRef && document.getElementById('regRefId')) document.getElementById('regRefId').value = pendingRef;
+
+      if (riderId && riderName) {
+        document.getElementById('welcomeScreen').style.display = 'none';
+        applyRiderProfile(riderId, riderName);
+        updateRiderNetworkStats();
+      } else {
+        document.getElementById('welcomeScreen').style.display = 'flex';
+      }
+    }
+
+    function applyRiderProfile(riderId, riderName) {
+      document.getElementById('drawerRiderId').innerText = riderId;
+      document.getElementById('drawerRiderName').innerText = riderName;
+      document.getElementById('headerRiderIdBadge').innerText = `ID: ${riderId}`;
+      document.getElementById('cardRiderUniqueId').innerText = riderId;
+    }
+
+    function sendRiderOTP() {
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      if (name.length < 2) { alert("Kripya apna pura naam dalein."); return; }
+      if (!/^[6-9]\d{9}$/.test(phone)) { alert("Kripya sahi 10-digit mobile number dalein."); return; }
+
+      generatedLoginOtp = String(Math.floor(1000 + Math.random() * 9000));
+      document.getElementById('stepMobileBox').style.display = 'none';
+      document.getElementById('stepOtpBox').style.display = 'block';
+      const smsAlert = document.getElementById('otpSmsAlert');
+      smsAlert.style.display = 'block';
+      smsAlert.innerHTML = `📩 +91-${phone} par OTP bheja gaya hai.<br><span style="color:#fde047;">YourRide Verification OTP: <strong>${generatedLoginOtp}</strong></span>`;
+    }
+
+    function resetOtpStep() {
+      generatedLoginOtp = null; document.getElementById('regOtpInput').value = '';
+      document.getElementById('stepOtpBox').style.display = 'none'; document.getElementById('stepMobileBox').style.display = 'block';
+    }
+
+    async function verifyRiderOTP() {
+      const enteredOtp = document.getElementById('regOtpInput').value.trim();
+      if (enteredOtp !== generatedLoginOtp) { alert("❌ Galat OTP!"); return; }
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const refBy = document.getElementById('regRefId').value.trim().toUpperCase();
+      const uniqueId = "YR-" + Math.floor(1000 + Math.random() * 9000);
+
+      localStorage.setItem('yourride_rider_id', uniqueId);
+      localStorage.setItem('yourride_kyc_done', 'true');
+      localStorage.setItem('yourride_kyc_name', name);
+      localStorage.setItem('yourride_rider_phone', phone);
+      if (refBy) localStorage.setItem('yourride_referred_by', refBy);
+
+      await registerInGlobalNetwork(uniqueId, name, "Rider", refBy || "HQ", phone, "Shalimar Garden");
+      localStorage.removeItem('yourride_pending_sponsor');
+
+      applyRiderProfile(uniqueId, name);
+      updateKycUI();
+      updateRiderNetworkStats();
+      loadHqBroadcastsAndSlabs();
+      document.getElementById('welcomeScreen').style.display = 'none';
+    }
+
+    function logoutRider() {
+      if (confirm("Kya aap logout karke Role Selection screen par jana chahte hain?")) {
+        localStorage.removeItem('yourride_rider_id');
+        window.location.href = 'index.html';
+      }
+    }
+
+    function getRiderHistory() { return JSON.parse(localStorage.getItem('yourride_rider_history') || '[]'); }
+    function updateHistoryCountBadge() { document.getElementById('drawerRideCount').innerText = getRiderHistory().length; }
+
+    function openRiderHistoryModal() {
+      const list = getRiderHistory();
+      document.getElementById('riderHistoryListContainer').innerHTML = list.length === 0
+        ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi completed ride nahi hai.</div>'
+        : list.map(r => `
+        <div class="hist-item">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:12px; font-weight:900; color:#38bdf8;">#${r.rideId} • ${r.vehicleType} (${r.km} KM)</span>
+            <span style="font-size:15px; font-weight:900; color:#4ade80;">₹${r.totalPaid}</span>
+          </div>
+          <div style="font-size:10.5px; color:#94a3b8; margin-bottom:5px;">🕒 ${r.date}</div>
+          <div style="font-size:12px; color:#f8fafc; font-weight:700;">📍 ${r.pickup}</div>
+          <div style="font-size:12px; color:#cbd5e1; font-weight:700; margin-top:2px;">🏁 ${r.drop}</div>
+        </div>
+      `).join('');
+      document.getElementById('riderHistoryModal').style.display = 'flex';
+    }
+
+    function closeRiderHistoryModal() { document.getElementById('riderHistoryModal').style.display = 'none'; }
+
+    function setMapTapMode(mode) {
+      mapTapMode = mode;
+      document.getElementById('btnTapPickup').className = 'tap-mode-btn' + (mode === 'pickup' ? ' active-pickup' : '');
+      document.getElementById('btnTapDrop').className = 'tap-mode-btn' + (mode === 'drop' ? ' active-drop' : '');
+    }
+
+    function toggleMenu(open) {
+      const drawer = document.getElementById('sideDrawer');
+      const backdrop = document.getElementById('drawerBackdrop');
+      if (open) {
+        updateHistoryCountBadge();
+        updateRiderNetworkStats();
+        renderReferralTree(document.getElementById('networkSearchInput').value);
+        drawer.classList.add('open'); backdrop.style.display = 'block';
+      } else { drawer.classList.remove('open'); backdrop.style.display = 'none'; }
+    }
+
+    function initMap() {
+      map = L.map('rideMap').setView(pickupCoords, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+      pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Pickup: Shalimar Garden").openPopup();
+
+      map.on('click', async function(e) {
+        const lat = e.latlng.lat, lon = e.latlng.lng;
+        const targetInput = document.getElementById(mapTapMode === 'pickup' ? 'pickupInput' : 'dropInput');
+        targetInput.value = "Map location ka naam nikal rahe hain...";
+
+        if (mapTapMode === 'pickup') {
+          pickupCoords = [lat, lon]; if (pickupMarker) map.removeLayer(pickupMarker);
+          pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Selected Pickup").openPopup();
+        } else {
+          dropCoords = [lat, lon]; if (dropMarker) map.removeLayer(dropMarker);
+          dropMarker = L.marker(dropCoords).addTo(map).bindPopup("🏁 Selected Drop").openPopup();
+          revealVehicleAndFareSection(true);
+        }
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          const data = await res.json();
+          targetInput.value = (data && data.display_name) ? data.display_name.split(',').slice(0, 3).join(',').trim() : `Pinned Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        } catch { targetInput.value = `Pinned Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`; }
+
+        evaluateLiveSurge();
+        if (pickupCoords && dropCoords) calculateRoadRoute();
+      });
+    }
+
+    function applySelectedPlace(type, label, lat, lon) {
+      if (type === 'pickup') {
+        document.getElementById('pickupInput').value = label;
+        pickupCoords = [parseFloat(lat), parseFloat(lon)];
+        if (pickupMarker) map.removeLayer(pickupMarker);
+        pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Pickup: " + label);
+        map.setView(pickupCoords, 14);
+        document.getElementById('pickupSuggestions').style.display = 'none';
+      } else {
+        document.getElementById('dropInput').value = label;
+        dropCoords = [parseFloat(lat), parseFloat(lon)];
+        if (dropMarker) map.removeLayer(dropMarker);
+        dropMarker = L.marker(dropCoords).addTo(map).bindPopup("🏁 Drop: " + label);
+        document.getElementById('dropSuggestions').style.display = 'none';
+        revealVehicleAndFareSection(true);
+      }
+      evaluateLiveSurge();
+      if (pickupCoords && dropCoords) calculateRoadRoute();
+    }
+
+    function renderSuggestionList(listEl, type, items) {
+      listEl.innerHTML = '';
+      if (!items || items.length === 0) { listEl.style.display = 'none'; return; }
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.innerHTML = `📍 ${item.name}${item.isLocal ? `<span class="sug-tag">Popular</span>` : ''}<span class="suggestion-sub">${item.sub}</span>`;
+        div.onclick = () => applySelectedPlace(type, `${item.name}, ${item.sub}`, item.lat, item.lon);
+        listEl.appendChild(div);
+      });
+      listEl.style.display = 'block';
+    }
+
+    function showPopularSuggestions(type) {
+      const inputVal = document.getElementById(type === 'pickup' ? 'pickupInput' : 'dropInput').value.trim();
+      if (inputVal.length >= 2) { searchLocation(inputVal, type); return; }
+      renderSuggestionList(document.getElementById(type === 'pickup' ? 'pickupSuggestions' : 'dropSuggestions'), type, NCR_LOCAL_PLACES.slice(0, 8).map(p => ({ ...p, isLocal: true })));
+    }
+
+    async function fetchPanIndiaPlaces(query) {
+      const results = [];
+      const seen = new Set();
+
+      try {
+        const res1 = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=28.65&lon=77.23&limit=8`);
+        const data1 = await res1.json();
+        if (data1 && Array.isArray(data1.features)) {
+          data1.features.forEach(f => {
+            const p = f.properties || {};
+            if (p.country && p.country.toLowerCase() !== 'india') return;
+            const title = p.name || p.street || p.city || '';
+            const subParts = [p.suburb || p.district, p.city || p.town || p.county, p.state].filter(Boolean);
+            const sub = subParts.join(', ') || 'India';
+            const key = (title + sub).toLowerCase();
+            if (title && !seen.has(key)) {
+              seen.add(key);
+              results.push({ name: title, sub, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], isLocal: false });
+            }
+          });
+        }
+      } catch (e) {}
+
+      if (results.length < 4) {
+        try {
+          const res2 = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&addressdetails=1&limit=6`);
+          const data2 = await res2.json();
+          if (Array.isArray(data2)) {
+            data2.forEach(place => {
+              const parts = place.display_name.split(',');
+              const title = parts[0].trim();
+              const sub = parts.slice(1, 4).join(',').trim() || 'India';
+              const key = (title + sub).toLowerCase();
+              if (title && !seen.has(key)) {
+                seen.add(key);
+                results.push({ name: title, sub, lat: parseFloat(place.lat), lon: parseFloat(place.lon), isLocal: false });
+              }
+            });
+          }
+        } catch (e) {}
+      }
+      return results;
+    }
+
+    function searchLocation(query, type) {
+      clearTimeout(searchTimeout);
+      const listEl = document.getElementById(type === 'pickup' ? 'pickupSuggestions' : 'dropSuggestions');
+      const cleanQ = (query || "").trim();
+
+      if (type === 'drop') {
+        dropCoords = null;
+        if (cleanQ.length === 0) {
+          revealVehicleAndFareSection(false);
+        }
+      }
+
+      if (cleanQ.length < 2) { listEl.style.display = 'none'; return; }
+
+      const lowerQ = cleanQ.toLowerCase();
+      const localMatches = NCR_LOCAL_PLACES
+        .filter(p => p.name.toLowerCase().includes(lowerQ) || p.sub.toLowerCase().includes(lowerQ))
+        .slice(0, 4)
+        .map(p => ({ ...p, isLocal: true }));
+
+      if (localMatches.length > 0) renderSuggestionList(listEl, type, localMatches);
+
+      searchTimeout = setTimeout(async () => {
+        const apiPlaces = await fetchPanIndiaPlaces(cleanQ);
+        const combined = [...localMatches];
+        const seenNames = new Set(localMatches.map(m => m.name.toLowerCase()));
+
+        apiPlaces.forEach(ap => {
+          if (!seenNames.has(ap.name.toLowerCase())) {
+            seenNames.add(ap.name.toLowerCase());
+            combined.push(ap);
+          }
+        });
+
+        renderSuggestionList(listEl, type, combined.slice(0, 10));
+      }, 220);
+    }
+
+    async function autoResolveTypedAddress(type) {
+      const val = document.getElementById(type === 'pickup' ? 'pickupInput' : 'dropInput').value.trim();
+      if (val.length < 3) return;
+      if (type === 'drop' && dropCoords) return;
+
+      const places = await fetchPanIndiaPlaces(val);
+      if (places.length > 0) {
+        applySelectedPlace(type, `${places[0].name}, ${places[0].sub}`, places[0].lat, places[0].lon);
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.form-group')) {
+        document.getElementById('pickupSuggestions').style.display = 'none';
+        document.getElementById('dropSuggestions').style.display = 'none';
+      }
+    });
+
+    function selectQuickDrop(lat, lon, label) {
+      document.getElementById('dropInput').value = label;
+      dropCoords = [lat, lon];
+      if (dropMarker) map.removeLayer(dropMarker);
+      dropMarker = L.marker(dropCoords).addTo(map).bindPopup("🏁 Drop: " + label);
+      revealVehicleAndFareSection(true);
+      evaluateLiveSurge();
+      calculateRoadRoute();
+    }
+
+    function detectGPSLocation() {
+      const input = document.getElementById('pickupInput');
+      if (!navigator.geolocation) { alert("GPS support nahi hai."); return; }
+      input.value = "GPS location dhundh rahe hain...";
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        pickupCoords = [pos.coords.latitude, pos.coords.longitude];
+        if (pickupMarker) map.removeLayer(pickupMarker);
+        pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Aapki Live Location").openPopup();
+        map.setView(pickupCoords, 15);
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pickupCoords[0]}&lon=${pickupCoords[1]}`);
+          const data = await res.json();
+          input.value = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${pickupCoords[0].toFixed(4)}, ${pickupCoords[1].toFixed(4)}`;
+        } catch { input.value = `${pickupCoords[0].toFixed(4)}, ${pickupCoords[1].toFixed(4)}`; }
+        evaluateLiveSurge(); if (dropCoords) calculateRoadRoute();
+      }, () => { input.value = "Shalimar Garden, Sahibabad"; });
+    }
+
+    function selectVehicleType(type) {
+      selectedVehicle = type;
+      ['hatchback', 'sedan', 'suv6'].forEach(v => document.getElementById('veh-' + v).classList.toggle('selected', v === type));
+      const cfg = VEHICLE_RATES[type];
+      document.getElementById('selectedVehLabel').innerText = `${cfg.name} • Distance`;
+      if (currentRoadKm > 0) updateFareDisplay(currentRoadKm);
+    }
+
+    function updateFareDisplay(oneWayKm, osrmMinutes = null) {
+      currentRoadKm = oneWayKm;
+      if (oneWayKm >= 75 && bookingCategoryMode === 'LOCAL') {
+        setBookingMode('OUTSTATION');
+        return;
+      }
+
+      expectedTripMinsRider = osrmMinutes ? Math.max(15, Math.round(osrmMinutes)) : Math.max(15, Math.round(oneWayKm * 2.2));
+      evaluateLiveSurge(); detectRouteToll(oneWayKm);
+
+      let effectiveKm = oneWayKm;
+      let nightAllowance = 0;
+      const days = parseInt(document.getElementById('osTripDaysSelect').value || '1', 10);
+
+      if (bookingCategoryMode === 'OUTSTATION') {
+        if (outstationTripType === 'ROUND-TRIP') {
+          const twoWayKm = oneWayKm * 2;
+          const minDaysKm = days * 250;
+          effectiveKm = Math.max(twoWayKm, minDaysKm);
+          nightAllowance = Math.max(0, days - 1) * 250;
+        } else {
+          effectiveKm = oneWayKm;
+        }
+      }
+
+      billedTotalKm = +(effectiveKm.toFixed(1));
+      document.getElementById('distBadgeSmall').innerText = bookingCategoryMode === 'OUTSTATION'
+        ? `Billed: ${billedTotalKm} KM (${outstationTripType})`
+        : `Distance: ${oneWayKm} KM`;
+      document.getElementById('distLabel').innerText = `${billedTotalKm} KM`;
+
+      const otherSurge = surgeMultiplier > 1.0 ? 1.35 : 1.0;
+      const poolKmCharge = Math.round(billedTotalKm * 3);
+
+      ['hatchback', 'sedan', 'suv6'].forEach(key => {
+        const v = VEHICLE_RATES[key];
+        const perKmRate = bookingCategoryMode === 'OUTSTATION' ? v.osPerKm : v.perKm;
+        const baseAmt = bookingCategoryMode === 'OUTSTATION' ? 150 : v.base;
+        const drvPart = Math.round((baseAmt + (billedTotalKm * perKmRate)) * surgeMultiplier) + nightAllowance;
+        const totalCustPrice = Math.max(50, Math.round(drvPart + poolKmCharge + autoTollCharge - appliedPromoDiscount));
+        const otherPrice = Math.round((v.otherBase + (billedTotalKm * v.otherPerKm)) * otherSurge) + autoTollCharge + nightAllowance;
+        document.getElementById('price-' + key).innerText = `₹${totalCustPrice}`;
+        document.getElementById('strike-' + key).innerText = `₹${otherPrice}`;
+      });
+
+      const activeCfg = VEHICLE_RATES[selectedVehicle];
+      const activePerKm = bookingCategoryMode === 'OUTSTATION' ? activeCfg.osPerKm : activeCfg.perKm;
+      const activeBase = bookingCategoryMode === 'OUTSTATION' ? 150 : activeCfg.base;
+
+      baseDriverPart = Math.round((activeBase + (billedTotalKm * activePerKm)) * surgeMultiplier) + nightAllowance;
+      poolPassThroughPart = poolKmCharge;
+      totalCustomerBaseFare = Math.max(50, baseDriverPart + poolPassThroughPart + autoTollCharge - appliedPromoDiscount);
+
+      const activeOtherFare = Math.round((activeCfg.otherBase + (billedTotalKm * activeCfg.otherPerKm)) * otherSurge) + autoTollCharge + nightAllowance;
+      const savedAmount = Math.max(25, activeOtherFare - totalCustomerBaseFare);
+
+      document.getElementById('otherAppFare').innerText = `Other App: ₹${activeOtherFare}`;
+      document.getElementById('totalFare').innerHTML = `₹ ${totalCustomerBaseFare} <span class="fare-km-tag">(${billedTotalKm} KM)</span>`;
+
+      const tollStrip = document.getElementById('autoTollStrip');
+      if (autoTollCharge > 0 || nightAllowance > 0) {
+        tollStrip.style.display = 'block';
+        let parts = [];
+        if (autoTollCharge > 0) parts.push(`🛣️ Toll/Border Tax: +₹${autoTollCharge}`);
+        if (nightAllowance > 0) parts.push(`🌙 Night Allowance (${days - 1}N): +₹${nightAllowance}`);
+        tollStrip.innerHTML = parts.join(' • ');
+      } else { tollStrip.style.display = 'none'; }
+
+      document.getElementById('savingNote').innerText = `🎉 ${activeCfg.name} (${billedTotalKm} KM) par Other App se ₹${savedAmount} Sasta!`;
+      document.getElementById('policyBottomNote').innerText = bookingCategoryMode === 'OUTSTATION'
+        ? `🛣️ Outstation ${outstationTripType} (${days} Day) • Seedha Captain ko Cash/UPI dein`
+        : `🚦 Auto Delay Buffer: 15 min extra time FREE, baad me ₹0.75/min`;
+    }
+
+    async function calculateRoadRoute() {
+      if (!pickupCoords || !dropCoords) return;
+      revealVehicleAndFareSection(true);
+      document.getElementById('distLabel').innerText = "Calculating...";
+      document.getElementById('distBadgeSmall').innerText = "Distance: Calculating...";
+
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropCoords[1]},${dropCoords[0]}?overview=full&geometries=geojson&alternatives=false`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const exactRoadKm = Math.max(1.5, +(route.distance / 1000).toFixed(1));
+          const estMins = Math.round(route.duration / 60);
+          updateFareDisplay(exactRoadKm, estMins);
+
+          if (routeLine) map.removeLayer(routeLine);
+          const latLngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
+          routeLine = L.polyline(latLngs, { color: bookingCategoryMode === 'OUTSTATION' ? '#f59e0b' : '#00d2ff', weight: 5 }).addTo(map);
+          map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+          return;
+        }
+      } catch (e) {}
+
+      const R = 6371;
+      const dLat = (dropCoords[0] - pickupCoords[0]) * Math.PI / 180;
+      const dLon = (dropCoords[1] - pickupCoords[1]) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(pickupCoords[0] * Math.PI / 180) * Math.cos(dropCoords[0] * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const straightKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const exactFallbackKm = Math.max(1.5, +(straightKm * 1.32).toFixed(1));
+
+      updateFareDisplay(exactFallbackKm);
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = L.polyline([pickupCoords, dropCoords], { color: '#00d2ff', weight: 4 }).addTo(map);
+      map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+    }
+
+    async function pollLiveRideStatusFromCloud() {
+      const liveRide = await cloudGet('live_ride');
+      const card = document.getElementById('activeRideCard');
+      if (!liveRide || !liveRide.rideId) {
+        if (activeLiveRideObj) {
+          activeLiveRideObj = null;
+          card.style.display = 'none';
+        }
+        return;
+      }
+
+      activeLiveRideObj = liveRide;
+      card.style.display = 'block';
+      document.getElementById('activeOtpBadge').innerText = `OTP: ${liveRide.otp}`;
+      const cancelBtn = document.getElementById('riderCancelRideBtn');
+
+      const tag = liveRide.bookingCategory === 'OUTSTATION' ? `🛣️ Outstation (${liveRide.outstationType})` : '🚖 Local Cab';
+      if (liveRide.status === 'PENDING') {
+        document.getElementById('activeRideStatusTitle').innerText = `${tag} • Searching Captain (${liveRide.distanceKm} KM)...`;
+        if (cancelBtn) cancelBtn.style.display = 'block';
+      } else if (liveRide.status === 'ACCEPTED') {
+        document.getElementById('activeRideStatusTitle').innerText = `✅ Captain Accepted! Arriving at Pickup`;
+        document.getElementById('assignedCapName').innerText = `${liveRide.captainName || 'Verified Captain'} (${liveRide.captainId || 'CAP'})`;
+        document.getElementById('assignedCapVeh').innerText = `🚘 ${liveRide.vehicleType} • ${liveRide.captainVeh || 'Cab'} (Number Masked)`;
+        if (cancelBtn) cancelBtn.style.display = 'block';
+      } else if (liveRide.status === 'STARTED') {
+        document.getElementById('activeRideStatusTitle').innerText = `🛣️ Trip Started • On The Way`;
+        if (liveRide.startedAt) localStorage.setItem('yourride_trip_started_at', liveRide.startedAt);
+        if (cancelBtn) cancelBtn.style.display = 'none';
+      }
+      updateJamUI();
+      syncInAppChatMessages();
+    }
+
+    async function bookRide() {
+      const pickupName = document.getElementById('pickupInput').value.trim();
+      const dropName = document.getElementById('dropInput').value.trim();
+
+      if (dropName.length >= 2 && !dropCoords) {
+        const found = await fetchPanIndiaPlaces(dropName);
+        if (found.length > 0) {
+          applySelectedPlace('drop', `${found[0].name}, ${found[0].sub}`, found[0].lat, found[0].lon);
+          await calculateRoadRoute();
+        }
+      }
+
+      const distText = document.getElementById('distLabel').innerText;
+      const cabCategory = VEHICLE_RATES[selectedVehicle].name;
+
+      if (!dropName || distText === "-- KM" || !dropCoords) { alert("Kripya sahi Drop Location / Destination City chunein!"); return; }
+      if (!localStorage.getItem('yourride_kyc_done')) {
+        if (confirm("Suraksha ke liye Rider KYC zaroori hai. Kya abhi verify karna chahte hain?")) { openKycModal(); return; }
+      }
+
+      const otp = String(Math.floor(1000 + Math.random() * 9000));
+      const kmVal = billedTotalKm || parseFloat(distText) || 10;
+      const rideId = "RID-" + Math.floor(1000 + Math.random() * 9000);
+      const osDays = parseInt(document.getElementById('osTripDaysSelect').value || '1', 10);
+
+      currentActiveRideMeta = { rideId, vehicleType: cabCategory, pickup: pickupName, drop: dropName, km: kmVal };
+
+      const liveRidePayload = {
+        rideId, status: "PENDING",
+        bookingCategory: bookingCategoryMode,
+        outstationType: bookingCategoryMode === 'OUTSTATION' ? outstationTripType : 'LOCAL',
+        outstationDays: bookingCategoryMode === 'OUTSTATION' ? osDays : 1,
+        vehicleType: cabCategory,
+        riderName: localStorage.getItem('yourride_kyc_name') || "Verified Rider",
+        riderId: localStorage.getItem('yourride_rider_id') || "YR-USER",
+        pickupAddress: pickupName, dropAddress: dropName, pickupCoords, dropCoords,
+        distanceKm: kmVal, expectedDurationMins: expectedTripMinsRider,
+        driverBasePart: baseDriverPart, poolPassThroughPart: poolPassThroughPart,
+        tollCharge: autoTollCharge, tollLabel: autoTollLabel, promoDiscount: appliedPromoDiscount,
+        customerFare: totalCustomerBaseFare, surgeMultiplier, otp,
+        bookedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      activeLiveRideObj = liveRidePayload;
+      await cloudSet('live_ride', liveRidePayload);
+
+      document.getElementById('activeRideStatusTitle').innerText = bookingCategoryMode === 'OUTSTATION'
+        ? `🛣️ Outstation (${outstationTripType}) • Searching Captain...`
+        : `🚖 Searching Nearby Captain (${kmVal} KM)...`;
+      document.getElementById('activeOtpBadge').innerText = `OTP: ${otp}`;
+      document.getElementById('activeRideCard').style.display = 'block';
+      document.getElementById('riderCancelRideBtn').style.display = 'block';
+      updateJamUI();
+
+      alert(`✅ ${bookingCategoryMode === 'OUTSTATION' ? 'Outstation Cab' : 'YourRide'} Book Ho Gayi!\n\nPickup: ${pickupName}\nDestination: ${dropName}\nTotal Billed Distance: ${kmVal} KM\nTotal Kiraya: ₹${totalCustomerBaseFare}\nOTP: ${otp}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getAutomaticRiderDelayMetrics() {
+      const startedAt = parseInt(localStorage.getItem('yourride_trip_started_at') || '0', 10);
+      const elapsedMins = startedAt > 0 ? Math.floor((Date.now() - startedAt) / 60000) : 0;
+      const chargeableMins = Math.max(0, Math.max(0, elapsedMins - expectedTripMinsRider) - 15);
+      return { elapsedMins, chargeableMins, customerJamCharge: +(chargeableMins * 0.75).toFixed(2) };
+    }
+
+    function updateJamUI() {
+      const delay = getAutomaticRiderDelayMetrics();
+      const finalPayable = +(totalCustomerBaseFare + delay.customerJamCharge).toFixed(2);
+      document.getElementById('jamTimerDisplay').innerText = `${delay.elapsedMins} min (Est: ${expectedTripMinsRider}m)`;
+      const badge = document.getElementById('jamStatusBadge');
+      const splitInfo = document.getElementById('jamSplitInfo');
+      if (delay.chargeableMins === 0) {
+        badge.className = 'jam-free-badge'; badge.innerText = '15 Min Buffer FREE';
+        splitInfo.innerHTML = `✅ Abhi extra delay charge <strong>₹0.00</strong> hai (15 min grace buffer active).`;
+      } else {
+        badge.className = 'jam-charge-badge'; badge.innerText = `+${delay.chargeableMins} Min Extra`;
+        splitInfo.innerHTML = `🚦 <strong>15 Min Buffer Crossed:</strong> +₹${delay.customerJamCharge.toFixed(2)} added.`;
+      }
+      document.getElementById('liveFinalBill').innerText = `₹ ${finalPayable} (${billedTotalKm} KM)`;
+    }
+
+    async function finishActiveRide() {
+      const delay = getAutomaticRiderDelayMetrics();
+      const finalBill = +(totalCustomerBaseFare + delay.customerJamCharge).toFixed(2);
+      const rideSnapshot = currentActiveRideMeta || { rideId: "RID-LIVE", vehicleType: "Cab", pickup: "Pickup", drop: "Drop", km: billedTotalKm };
+
+      if (currentActiveRideMeta) {
+        const hist = getRiderHistory();
+        hist.unshift({ rideId: currentActiveRideMeta.rideId, date: new Date().toLocaleString('en-IN'), vehicleType: currentActiveRideMeta.vehicleType, pickup: currentActiveRideMeta.pickup, drop: currentActiveRideMeta.drop, km: currentActiveRideMeta.km, totalPaid: finalBill });
+        localStorage.setItem('yourride_rider_history', JSON.stringify(hist));
+        updateHistoryCountBadge();
+      }
+      await cloudSet('live_ride', null);
+      activeLiveRideObj = null;
+      localStorage.removeItem('yourride_trip_started_at');
+      document.getElementById('activeRideCard').style.display = 'none';
+      openRateRideModal(rideSnapshot, finalBill);
+    }
+
+    function shareLiveLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Main YourRide se travel kar raha hu. Meri Live Location: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`)}`, '_blank');
+        }, () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Main YourRide verified cab se travel kar raha hu.')}`, '_blank'));
+      }
+    }
+
+    function triggerSOS() { if (confirm("🚨 EMERGENCY SOS ALERT!\n\nKya aap Police Helpline (112) dial karna chahte hain?")) window.location.href = "tel:112"; }
+
+    function openKycModal() { document.getElementById('kycModal').style.display = 'flex'; }
+    function closeKycModal() { document.getElementById('kycModal').style.display = 'none'; }
+    function submitKYC() {
+      const name = document.getElementById('kycName').value.trim();
+      const phone = document.getElementById('kycPhone').value.trim();
+      if (!name || phone.length < 10) { alert("Kripya sahi naam aur 10-digit mobile number dalein."); return; }
+      localStorage.setItem('yourride_kyc_done', 'true'); localStorage.setItem('yourride_kyc_name', name);
+      if (!localStorage.getItem('yourride_rider_id')) {
+        const uid = "YR-" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('yourride_rider_id', uid); applyRiderProfile(uid, name);
+      }
+      updateKycUI(); closeKycModal();
+    }
+
+    function updateKycUI() {
+      if (localStorage.getItem('yourride_kyc_done')) {
+        document.getElementById('kycStatusBadge').innerHTML = '<span class="kyc-verified">✅ Verified Rider (' + (localStorage.getItem('yourride_kyc_name') || 'User') + ')</span>';
+        document.getElementById('kycBtn').innerText = 'VERIFIED'; document.getElementById('kycBtn').style.background = '#059669';
+      }
+      checkMenuDot();
+    }
+
+    function handleDocUpload(input, docKey) {
+      const file = input.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 650 / img.width);
+          canvas.width = img.width * scale; canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          uploadedDocs[docKey] = canvas.toDataURL('image/jpeg', 0.65); showDocPreview(docKey, uploadedDocs[docKey]);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showDocPreview(docKey, dataUrl) {
+      if (!dataUrl) return;
+      const prev = document.getElementById('prev-' + docKey), icon = document.getElementById('icon-' + docKey), box = document.getElementById('box-' + docKey);
+      prev.src = dataUrl; prev.style.display = 'block'; if (icon) icon.style.display = 'none';
+      box.classList.add('uploaded'); box.querySelector('.doc-hint').innerText = '✅ Uploaded'; box.querySelector('.doc-hint').style.color = '#10b981';
+    }
+
+    function openBankModal() {
+      const saved = JSON.parse(localStorage.getItem('yourride_bank_kyc') || '{}');
+      if (saved.aadhaar) document.getElementById('aadhaarInput').value = saved.aadhaar;
+      if (saved.pan) document.getElementById('panInput').value = saved.pan;
+      if (saved.holder) document.getElementById('accHolderInput').value = saved.holder;
+      if (saved.accNum) document.getElementById('accNumInput').value = saved.accNum;
+      if (saved.ifsc) document.getElementById('ifscInput').value = saved.ifsc;
+      if (saved.upi) document.getElementById('upiInput').value = saved.upi;
+      if (saved.docs) { uploadedDocs = { ...uploadedDocs, ...saved.docs }; ['aadhaarFront', 'aadhaarBack', 'panPhoto', 'bankProof'].forEach(k => showDocPreview(k, uploadedDocs[k])); }
+      document.getElementById('bankModal').style.display = 'flex';
+    }
+
+    function closeBankModal() { document.getElementById('bankModal').style.display = 'none'; }
+
+    async function submitBankDetails() {
+      const aadhaar = document.getElementById('aadhaarInput').value.replace(/\s+/g, '');
+      const pan = document.getElementById('panInput').value.trim().toUpperCase();
+      const holder = document.getElementById('accHolderInput').value.trim();
+      const accNum = document.getElementById('accNumInput').value.trim();
+      const ifsc = document.getElementById('ifscInput').value.trim().toUpperCase();
+      const upi = document.getElementById('upiInput').value.trim();
+
+      if (aadhaar.length !== 12 || isNaN(aadhaar)) { alert("Sahi 12-digit ID Number dalein."); return; }
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) { alert("Sahi PAN Number dalein."); return; }
+      if (!holder || accNum.length < 8 || ifsc.length < 11) { alert("Bank details sahi se bharein."); return; }
+
+      const bankPayload = { aadhaar, pan, holder, accNum, ifsc, upi, docs: uploadedDocs };
+      localStorage.setItem('yourride_bank_kyc', JSON.stringify(bankPayload));
+      const myId = localStorage.getItem('yourride_rider_id');
+      if (myId) await cloudSet(`riders/${myId}/bankKyc`, bankPayload);
+
+      updateBankUI(); closeBankModal(); alert("✅ Bank details aur documents Live Cloud par save ho gaye hain!");
+    }
+
+    function updateBankUI() {
+      const saved = JSON.parse(localStorage.getItem('yourride_bank_kyc') || 'null');
+      if (saved && saved.accNum) {
+        document.getElementById('bankStatusBadge').innerHTML = `<span class="kyc-verified">✅ Payout Active (A/c ••••${saved.accNum.slice(-4)})</span>`;
+        document.getElementById('bankSubText').innerText = `PAN: ${saved.pan} | Cloud Verified`;
+        document.getElementById('bankBtn').innerText = 'EDIT BANK & DOCS'; document.getElementById('bankBtn').style.background = '#059669';
+      }
+      checkMenuDot();
+    }
+
+    function checkMenuDot() {
+      const kycDone = localStorage.getItem('yourride_kyc_done'), bankDone = localStorage.getItem('yourride_bank_kyc');
+      document.getElementById('menuAlertDot').style.display = (kycDone && bankDone) ? 'none' : 'block';
+    }
+
+    function shareReferralWhatsApp() {
+      const myId = localStorage.getItem('yourride_rider_id') || 'YR-101';
+      const inviteLink = `${window.location.origin}/index.html?ref=${myId}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Bhai, YourRide cab app check kar — Local & Outstation rides par 4 Levels tak referral income!\nMeri Referral ID: *${myId}*\nIs link se join karein (ID automatic link ho jayegi):\n${inviteLink}`)}`, '_blank');
+    }
+
+    window.onload = function() {
+      checkFirstTimeLogin();
+      loadHqBroadcastsAndSlabs();
+      initMap();
+      evaluateLiveSurge();
+      updateKycUI();
+      updateBankUI();
+      updateHistoryCountBadge();
+      updateRiderNetworkStats();
+      renderReferralTree();
+      setInterval(() => {
+        pollLiveRideStatusFromCloud();
+        loadHqBroadcastsAndSlabs();
+        updateRiderNetworkStats();
+      }, 3500);
+    };
+  </script>
+</body>
+</html>

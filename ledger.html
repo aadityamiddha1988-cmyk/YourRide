@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YourRide - Company Partner HQ Control Center</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #060a17; color: #f8fafc; padding-bottom: 40px; }
+
+    /* PIN Lock Screen */
+    .pin-screen {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top, #1e1b4b 0%, #050814 100%);
+      z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
+    }
+    .pin-box { background: #1e293b; border: 1.5px solid #8b5cf6; border-radius: 16px; padding: 26px 20px; width: 100%; max-width: 340px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.7); }
+    .pin-input { width: 100%; background: #0f172a; border: 2px solid #8b5cf6; color: #fff; padding: 12px; border-radius: 8px; font-size: 24px; font-weight: 900; text-align: center; letter-spacing: 8px; margin: 14px 0; outline: none; }
+
+    /* Header */
+    .header { background: #0f172a; padding: 14px 16px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 800; }
+    .brand { font-size: 19px; font-weight: 900; color: #fff; }
+    .brand span { color: #a78bfa; }
+    .live-pill { font-size: 11px; background: #064e3b; color: #6ee7b7; padding: 4px 9px; border-radius: 12px; font-weight: 800; }
+
+    /* Tabs Navigation */
+    .hq-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: #0b1329; border-bottom: 1px solid #1e293b; scrollbar-width: none; position: sticky; top: 53px; z-index: 790; }
+    .hq-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 8px 13px; border-radius: 8px; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+    .tab-btn.active { background: #8b5cf6; color: #ffffff; border-color: #a78bfa; }
+
+    .container { padding: 14px 16px; max-width: 680px; margin: 0 auto; }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; }
+    .kpi-lbl { font-size: 10.5px; color: #94a3b8; font-weight: 800; text-transform: uppercase; }
+    .kpi-val { font-size: 21px; font-weight: 900; color: #fff; margin-top: 3px; }
+    .kpi-sub { font-size: 10px; color: #38bdf8; font-weight: 700; margin-top: 2px; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .card-title { font-size: 15px; font-weight: 900; color: #38bdf8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .form-control { width: 100%; background: #0f172a; border: 1.5px solid #475569; color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; outline: none; font-weight: 600; }
+    .btn-hq { width: 100%; background: #8b5cf6; color: #fff; border: none; padding: 11px; border-radius: 8px; font-size: 13px; font-weight: 900; cursor: pointer; }
+
+    .quick-amt-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+    .btn-amt-chip { background: #0f172a; border: 1px solid #10b981; color: #4ade80; padding: 7px; border-radius: 7px; font-size: 12px; font-weight: 900; cursor: pointer; }
+
+    .area-row { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid #1e293b; padding: 10px 12px; border-radius: 8px; margin-bottom: 7px; font-size: 12.5px; }
+    .area-badges { display: flex; gap: 6px; }
+    .badge-cab { background: rgba(6, 182, 212, 0.18); color: #22d3ee; border: 1px solid #0891b2; padding: 3px 7px; border-radius: 5px; font-size: 11px; font-weight: 800; }
+    .badge-rider { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid #d97706; padding: 3px 7px; border-radius: 5px; font-size: 11px; font-weight: 800; }
+
+    .entity-card { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .entity-card.pending-hq { border: 1.5px solid #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, #0f172a 100%); }
+    .entity-card.suspended { border-color: #ef4444; opacity: 0.78; }
+    .ent-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .ent-name { font-size: 14px; font-weight: 900; color: #fff; }
+    .ent-meta { font-size: 11.5px; color: #94a3b8; margin-bottom: 8px; line-height: 1.45; }
+    .action-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn-sm { padding: 7px 10px; border-radius: 6px; border: none; font-size: 11px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-call { background: #10b981; color: #0b1329; }
+    .btn-loc { background: #0284c7; color: #fff; }
+    .btn-doc { background: #6366f1; color: #fff; }
+    .btn-net { background: #0e7490; color: #ecfeff; }
+    .btn-personal { background: #d97706; color: #fff; }
+    .btn-approve { background: #f59e0b; color: #0b1329; }
+    .btn-suspend { background: #dc2626; color: #fff; }
+    .btn-activate { background: #059669; color: #fff; }
+
+    /* 4-Level Network Inspector Boxes */
+    .net-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; text-align: center; }
+    .net-lvl-card { background: #0f172a; border: 1px solid #0e7490; border-radius: 8px; padding: 7px 4px; }
+    .net-lvl-title { font-size: 10px; color: #94a3b8; font-weight: 800; }
+    .net-lvl-val { font-size: 15px; font-weight: 900; color: #22d3ee; margin-top: 2px; }
+    .net-lvl-rate { font-size: 9px; color: #4ade80; font-weight: 700; }
+    .net-member-pill { display: inline-block; background: #1e293b; border: 1px solid #334155; padding: 4px 8px; border-radius: 6px; font-size: 11px; margin: 3px 4px 3px 0; color: #e2e8f0; }
+
+    audio { width: 100%; height: 36px; margin-top: 8px; border-radius: 6px; }
+
+    #hqCabMap { width: 100%; height: 240px; border-radius: 10px; border: 1.5px solid #334155; margin-bottom: 10px; z-index: 1; }
+    .profit-banner { background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%); border: 1.5px solid #10b981; border-radius: 12px; padding: 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .exp-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 9px 11px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #1e293b; font-size: 12px; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; padding: 12px; }
+    .modal-body { background: #1e293b; border: 1.5px solid #475569; border-radius: 14px; width: 100%; max-width: 440px; padding: 16px; max-height: 90vh; overflow-y: auto; }
+    .doc-detail-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+
+    .orig-doc-card { background: #0f172a; border: 1.5px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+    .orig-doc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; font-weight: 900; color: #38bdf8; }
+    .orig-doc-img { width: 100%; max-height: 240px; object-fit: contain; border-radius: 6px; border: 1px solid #475569; background: #060a17; cursor: zoom-in; }
+  </style>
+</head>
+<body>
+
+  <!-- Admin PIN Lock -->
+  <div class="pin-screen" id="pinScreen">
+    <div class="pin-box">
+      <div style="font-size: 38px; margin-bottom: 6px;">🔐</div>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff;">Company Partner HQ</h3>
+      <p style="font-size: 11.5px; color: #94a3b8; margin-top: 4px;">Live Cloud Control Center kholne ke liye 4-Digit PIN dalein</p>
+      <input type="password" class="pin-input" id="adminPinInput" maxlength="4" placeholder="••••">
+      <button class="btn-hq" onclick="unlockLedger()">UNLOCK HQ PORTAL</button>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="brand">Your<span>Ride</span> HQ Cloud</div>
+    <span class="live-pill">● Firebase Live</span>
+  </div>
+
+  <div class="hq-tabs">
+    <button class="tab-btn active" onclick="switchHqTab('overview', this)">📊 Overview & Live</button>
+    <button class="tab-btn" onclick="switchHqTab('wallettopup', this)">💳 Wallet Top-Up</button>
+    <button class="tab-btn" onclick="switchHqTab('network', this)">🌳 Network & Income</button>
+    <button class="tab-btn" onclick="switchHqTab('personal', this)">🎯 Personal Offer</button>
+    <button class="tab-btn" onclick="switchHqTab('captains', this)">🧑‍✈️ Captains & Verify</button>
+    <button class="tab-btn" onclick="switchHqTab('riders', this)">🧳 Riders & IVR</button>
+    <button class="tab-btn" onclick="switchHqTab('calllogs', this)">🎧 Call Audio</button>
+    <button class="tab-btn" onclick="switchHqTab('livecabs', this)">🚖 Live Cabs</button>
+    <button class="tab-btn" onclick="switchHqTab('finance', this)">💰 Profit & Kharcha</button>
+    <button class="tab-btn" onclick="switchHqTab('promos', this)">📣 Bulk Offers</button>
+  </div>
+
+  <div class="container">
+
+    <!-- TAB 1: OVERVIEW & AREA-WISE STATS -->
+    <div class="tab-section active" id="tab-overview">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-lbl">Verified Active Cabs</div>
+          <div class="kpi-val" style="color:#22d3ee;" id="kpiActiveCabs">0</div>
+          <div class="kpi-sub">Pending Verify: <span style="color:#fbbf24;" id="kpiPendingCabs">0</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Registered Riders</div>
+          <div class="kpi-val" style="color:#f59e0b;" id="kpiTotalRiders">0</div>
+          <div class="kpi-sub">Live Cloud Users</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Company Gross Revenue</div>
+          <div class="kpi-val" style="color:#4ade80;" id="kpiGrossRev">₹ 0</div>
+          <div class="kpi-sub">₹1/Day Pass + Pool Fee</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Net Company Profit</div>
+          <div class="kpi-val" style="color:#a78bfa;" id="kpiNetProfit">₹ 0</div>
+          <div class="kpi-sub">After Expenses & Payouts</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:#06b6d4;">
+        <div class="card-title"><span>🛰️ Live Ride Monitor (Local & Outstation)</span><button class="btn-sm btn-loc" onclick="refreshAllHqModules()">🔄 Sync</button></div>
+        <div id="hqLiveRideMonitorBox"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>📍 Area-Wise Cabs & Riders Report</span></div>
+        <div id="areaStatsContainer"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💸 Pending Referral Payouts (Min ₹300)</div>
+        <div id="hqWithdrawalsList"></div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         TAB 2: DIRECT WALLET RECHARGE / TOP-UP BY ID (CAPTAIN & RIDER)
+         ========================================================= -->
+    <div class="tab-section" id="tab-wallettopup">
+      <div class="card" style="border-color:#10b981;">
+        <div class="card-title" style="color:#4ade80;">💳 Direct Wallet Top-Up (By User ID)</div>
+        <p style="font-size:11.5px; color:#cbd5e1; margin-bottom:10px;">
+          Kisi bhi <strong>Captain (`CAP-XXXX`)</strong> ya <strong>Rider (`YR-XXXX`)</strong> ki ID dalein ya list se chunein—paise turant unke live wallet mein add ho jayenge:
+        </p>
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">1. Captain ya Rider ki ID Daalein (e.g. CAP-4168 ya YR-9169):</label>
+        <input type="text" class="form-control" id="walletTargetIdInput" style="text-transform:uppercase; font-size:15px; font-weight:900;" placeholder="CAP-XXXX ya YR-XXXX" oninput="lookupWalletUserPreview(this.value)">
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">Ya Registered List Se Direct Chunein:</label>
+        <select class="form-control" id="walletUserDropdown" onchange="selectWalletUserFromDropdown(this.value)">
+          <option value="">-- Captain ya Rider Select Karein --</option>
+        </select>
+
+        <div id="walletUserPreviewBox" style="display:none; background:#0f172a; border:1px solid #0284c7; border-radius:8px; padding:9px 11px; margin-bottom:10px; font-size:12px;"></div>
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">2. Kitna Amount Add Karna Hai (₹):</label>
+        <div class="quick-amt-row">
+          <button type="button" class="btn-amt-chip" onclick="document.getElementById('walletTopupAmount').value='50'">+ ₹50</button>
+          <button type="button" class="btn-amt-chip" onclick="document.getElementById('walletTopupAmount').value='100'">+ ₹100</button>
+          <button type="button" class="btn-amt-chip" onclick="document.getElementById('walletTopupAmount').value='200'">+ ₹200</button>
+          <button type="button" class="btn-amt-chip" onclick="document.getElementById('walletTopupAmount').value='500'">+ ₹500</button>
+        </div>
+        <input type="number" class="form-control" id="walletTopupAmount" placeholder="Amount ₹ (e.g. 100)">
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">3. Remark / Payment Mode:</label>
+        <input type="text" class="form-control" id="walletTopupNote" placeholder="e.g. UPI Received / Welcome Recharge">
+
+        <button class="btn-hq" style="background:#10b981; color:#0b1329;" onclick="creditUserWalletFromLedger()">
+          ✅ ADD MONEY TO WALLET NOW
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🧾 Recent HQ Wallet Transfers</div>
+        <div id="walletTopupHistoryList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: RIDER & CAPTAIN 4-LEVEL NETWORK & INCOME INSPECTOR -->
+    <div class="tab-section" id="tab-network">
+      <div class="card">
+        <div class="card-title"><span>🌳 Rider & Captain Full Network & Income</span><button class="btn-sm btn-loc" onclick="refreshAllHqModules()">🔄 Sync</button></div>
+        <p style="font-size:11.5px; color:#94a3b8; margin-bottom:10px;">
+          Kisi bhi Rider (`YR-XXXX`) ya Captain (`CAP-XXXX`) ko chunein ya search karein—uska poora 4-Level team tree aur network se hui total income dikhai degi:
+        </p>
+
+        <div style="display:flex; gap:6px; margin-bottom:10px;">
+          <button type="button" class="btn-sm btn-loc" id="btnFilterNetAll" onclick="setNetRoleFilter('ALL')">All Members</button>
+          <button type="button" class="btn-sm" style="background:#334155; color:#fff;" id="btnFilterNetRider" onclick="setNetRoleFilter('Rider')">🧳 Only Riders</button>
+          <button type="button" class="btn-sm" style="background:#334155; color:#fff;" id="btnFilterNetCap" onclick="setNetRoleFilter('Captain')">🧑‍✈️ Only Captains</button>
+        </div>
+
+        <input type="text" class="form-control" id="searchNetworkUserInput" placeholder="🔍 Naam ya ID (jaise YR-1234 ya CAP-4168) search karein..." oninput="renderNetworkUsersDirectory()">
+        <div id="networkUsersDirectoryList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SEND PERSONAL 1-TO-1 OFFER / SCHEME -->
+    <div class="tab-section" id="tab-personal">
+      <div class="card" style="border-color: #f59e0b;">
+        <div class="card-title" style="color:#fbbf24;">🎯 Send Personal Offer / Scheme (1-to-1)</div>
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">1. Role Chunein:</label>
+        <select class="form-control" id="personalTargetRole" onchange="populatePersonalTargetUsers()">
+          <option value="Captain">🧑‍✈️ Specific Captain (Driver) Ko Bhejein</option>
+          <option value="Rider">🧳 Specific Rider (Customer) Ko Bhejein</option>
+        </select>
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">2. Rider ya Captain Chunein:</label>
+        <select class="form-control" id="personalTargetUserId"></select>
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">3. Offer / Scheme Title:</label>
+        <input type="text" class="form-control" id="personalOfferTitle" placeholder="Jaise: 🎁 Special Outstation Bonus Scheme">
+
+        <label style="font-size:11px; color:#94a3b8; font-weight:800; display:block; margin-bottom:4px;">4. Personal Offer / Scheme Message:</label>
+        <input type="text" class="form-control" id="personalOfferMsg" placeholder="Jaise: Aaj 5 rides par ₹250 extra bonus milega!">
+
+        <button class="btn-hq" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#0b1329;" onclick="sendPersonalOfferToUser()">
+          🚀 SEND PERSONAL OFFER NOW
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Active Personal Offers Sent</div>
+        <div id="activePersonalOffersList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 5: CAPTAINS MANAGEMENT & ORIGINAL DOCUMENT VERIFICATION -->
+    <div class="tab-section" id="tab-captains">
+      <div class="card">
+        <div class="card-title">🧑‍✈️ Captains Verification & Original Docs</div>
+        <input type="text" class="form-control" id="searchCapInput" placeholder="🔍 Captain naam, cab number, phone ya area search karein..." oninput="renderCaptainsList()">
+        <div id="hqCaptainsContainer"></div>
+      </div>
+    </div>
+
+    <!-- TAB 6: RIDERS MANAGEMENT & IVR SUPPORT TICKETS -->
+    <div class="tab-section" id="tab-riders">
+      <div class="card" style="border-color:#0284c7;">
+        <div class="card-title">🎧 Customer IVR Support Tickets</div>
+        <div id="hqSupportTicketsList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🧳 Registered Riders, Wallet & Direct Call</div>
+        <input type="text" class="form-control" id="searchRiderInput" placeholder="🔍 Rider naam, ID, area ya phone number search karein..." oninput="renderRidersList()">
+        <div id="hqRidersContainer"></div>
+      </div>
+    </div>
+
+    <!-- TAB 7: MASKED CALL LOGS & AUDIO RECORDINGS -->
+    <div class="tab-section" id="tab-calllogs">
+      <div class="card">
+        <div class="card-title"><span>🎧 Masked Call Recordings & Audit Logs</span><button class="btn-sm btn-loc" onclick="renderCallRecordings()">🔄 Refresh Audio</button></div>
+        <div id="callRecordingsList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 8: LIVE CABS & MAP TRACKING -->
+    <div class="tab-section" id="tab-livecabs">
+      <div class="card">
+        <div class="card-title"><span>🛰️ Live Cab GPS Tracker</span><button class="btn-sm btn-loc" onclick="initOrUpdateHqMap()">🔄 Refresh GPS</button></div>
+        <div id="hqCabMap"></div>
+        <input type="text" class="form-control" id="searchLiveCabInput" placeholder="🔍 Live Cab number, Captain naam ya area search karein..." oninput="renderLiveCabsList()">
+        <div id="liveCabsListContainer"></div>
+      </div>
+    </div>
+
+    <!-- TAB 9: COMPANY EXPENSES & PROFIT -->
+    <div class="tab-section" id="tab-finance">
+      <div class="profit-banner">
+        <div>
+          <div style="font-size:11px; color:#6ee7b7; font-weight:800; text-transform:uppercase;">Net Profit (Revenue - Kharcha)</div>
+          <div style="font-size:28px; font-weight:900; color:#4ade80;" id="finNetProfitDisplay">₹ 0</div>
+        </div>
+        <div style="text-align:right; font-size:11.5px; color:#cbd5e1;">
+          <div>Gross Income: <strong style="color:#fff;" id="finGrossDisplay">₹ 0</strong></div>
+          <div>Total Kharcha: <strong style="color:#f87171;" id="finExpDisplay">₹ 0</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">➕ Naya Company Kharcha (Expense) Entry</div>
+        <select class="form-control" id="expCategory">
+          <option value="Marketing & Pamphlets">📢 Marketing, Stickers & Pamphlets</option>
+          <option value="4-Level Referral Payout">🤝 4-Level Referral Bonus Payout</option>
+          <option value="Server, Domain & API">💻 Server, Domain & Map API</option>
+          <option value="Office, SIM & Field Staff">🏢 Office, Helpline SIM & Field Visit</option>
+          <option value="Promo Discount Subsidy">🎟️ Promo Code Discount Cost</option>
+        </select>
+        <input type="text" class="form-control" id="expDesc" placeholder="Kharcha vivaran (e.g. Shalimar Garden cab stickers printing)">
+        <input type="number" class="form-control" id="expAmount" placeholder="Amount ₹ (e.g. 1500)">
+        <button class="btn-hq" style="background:#ef4444;" onclick="addCompanyExpense()">💾 SAVE EXPENSE TO CLOUD</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📒 Company Expense Ledger</div>
+        <div id="expenseHistoryList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 10: BULK PROMOTIONS & COUPONS -->
+    <div class="tab-section" id="tab-promos">
+      <div class="card">
+        <div class="card-title">📣 Publish Bulk Offer / Promotion Banner</div>
+        <select class="form-control" id="promoTarget">
+          <option value="All Riders">Target: All Riders Banner</option>
+          <option value="All Captains">Target: All Captains Banner</option>
+        </select>
+        <input type="text" class="form-control" id="promoMsgInput" placeholder="Offer message likhein (e.g. Outstation par ₹100 off! Code: OS100)">
+        <button class="btn-hq" style="background:#f59e0b; color:#0b1329;" onclick="publishBroadcast()">🚀 SEND BULK OFFER TO CLOUD</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎟️ Create Rider Discount Coupon</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+          <input type="text" class="form-control" id="newCouponCode" style="text-transform:uppercase;" placeholder="Code (e.g. OS100)">
+          <input type="number" class="form-control" id="newCouponAmt" placeholder="Discount ₹ (e.g. 100)">
+        </div>
+        <button class="btn-hq" style="background:#0284c7;" onclick="createPromoCoupon()">+ ADD PROMO COUPON TO CLOUD</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Original Document & 4-Level Network Viewer Modal -->
+  <div class="modal-overlay" id="docViewerModal">
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:8px;">
+        <h3 style="font-size:15px; color:#38bdf8;" id="docModalTitle">📄 Details</h3>
+        <button onclick="document.getElementById('docViewerModal').style.display='none'" style="background:#334155; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer;">✕</button>
+      </div>
+      <div id="docModalContent" style="font-size:12.5px; line-height:1.6; color:#e2e8f0;"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const FIREBASE_DB_URL = "https://yourridelive-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const COMPANY_PIN = "1988";
+    let hqMap = null, cabMarkers = [], cachedCaptains = [], cachedRiders = [], cachedExpenses = [], cachedNetwork = [];
+    let netRoleFilter = 'ALL';
+
+    async function cloudGet(path) {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+        return await res.json();
+      } catch (e) { return null; }
+    }
+    async function cloudSet(path, data) {
+      try { await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) {}
+    }
+    async function cloudPatch(path, data) {
+      try { await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) {}
+    }
+    async function cloudPush(path, data) {
+      try { await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) {}
+    }
+
+    function unlockLedger() {
+      if (document.getElementById('adminPinInput').value.trim() === COMPANY_PIN) {
+        document.getElementById('pinScreen').style.display = 'none';
+        refreshAllHqModules();
+        setInterval(refreshAllHqModules, 7000);
+      } else { alert("❌ Galat Admin PIN!"); }
+    }
+
+    function switchHqTab(tabName, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+      if (tabName === 'livecabs') setTimeout(() => { initOrUpdateHqMap(); }, 150);
+      if (tabName === 'calllogs') renderCallRecordings();
+      if (tabName === 'personal') { populatePersonalTargetUsers(); renderActivePersonalOffers(); }
+      if (tabName === 'network') renderNetworkUsersDirectory();
+      if (tabName === 'wallettopup') { populateWalletUserDropdown(); renderWalletTopupHistory(); }
+    }
+
+    async function refreshAllHqModules() {
+      const capsObj = await cloudGet('captains') || {};
+      const ridersObj = await cloudGet('riders') || {};
+      const expObj = await cloudGet('expenses') || {};
+      const netObj = await cloudGet('network') || {};
+      const liveRide = await cloudGet('live_ride');
+
+      cachedCaptains = Object.values(capsObj);
+      cachedRiders = Object.values(ridersObj);
+      cachedExpenses = Object.values(expObj).reverse();
+      cachedNetwork = Object.values(netObj);
+
+      renderLiveRideMonitor(liveRide);
+      renderOverviewAndAreas();
+      renderCaptainsList();
+      renderRidersList();
+      renderSupportTickets();
+      renderFinanceAndExpenses();
+      renderWithdrawals();
+      renderNetworkUsersDirectory();
+      renderActivePersonalOffers();
+      populateWalletUserDropdown();
+      renderWalletTopupHistory();
+    }
+
+    /* ========================================================
+       DIRECT WALLET TOP-UP FROM LEDGER BY ID (CAPTAIN & RIDER)
+       ======================================================== */
+    function populateWalletUserDropdown() {
+      const sel = document.getElementById('walletUserDropdown');
+      if (!sel) return;
+      const currentVal = sel.value;
+      const options = ['<option value="">-- Captain ya Rider Select Karein --</option>'];
+      cachedCaptains.forEach(c => {
+        options.push(`<option value="${c.id}">🧑‍✈️ ${c.name} (${c.id}) • Bal: ₹${(Number(c.wallet) || 0).toFixed(2)}</option>`);
+      });
+      cachedRiders.forEach(r => {
+        options.push(`<option value="${r.id}">🧳 ${r.name} (${r.id}) • Bal: ₹${(Number(r.wallet) || 0).toFixed(2)}</option>`);
+      });
+      sel.innerHTML = options.join('');
+      if (currentVal) sel.value = currentVal;
+    }
+
+    function selectWalletUserFromDropdown(userId) {
+      if (!userId) return;
+      document.getElementById('walletTargetIdInput').value = userId;
+      lookupWalletUserPreview(userId);
+    }
+
+    function jumpToWalletTopup(userId) {
+      const walletTabBtn = document.querySelectorAll('.tab-btn')[1];
+      switchHqTab('wallettopup', walletTabBtn);
+      document.getElementById('walletTargetIdInput').value = userId;
+      lookupWalletUserPreview(userId);
+    }
+
+    function lookupWalletUserPreview(rawId) {
+      const id = (rawId || '').trim().toUpperCase();
+      const preview = document.getElementById('walletUserPreviewBox');
+      if (!id) { preview.style.display = 'none'; return; }
+
+      const cap = cachedCaptains.find(c => (c.id || '').toUpperCase() === id);
+      const rider = cachedRiders.find(r => (r.id || '').toUpperCase() === id);
+      const netUser = cachedNetwork.find(n => (n.id || '').toUpperCase() === id);
+
+      if (cap) {
+        preview.style.display = 'block';
+        preview.innerHTML = `✅ <strong>Captain Found:</strong> ${cap.name} (${cap.id}) • Cab: ${cap.vehNum || '-'}<br>💰 Current SaaS Wallet Balance: <strong style="color:#4ade80;">₹ ${(Number(cap.wallet) || 0).toFixed(2)}</strong>`;
+      } else if (rider || netUser) {
+        const u = rider || netUser;
+        preview.style.display = 'block';
+        preview.innerHTML = `✅ <strong>Rider Found:</strong> ${u.name} (${u.id}) • Phone: ${u.phone || '-'}<br>💰 Current Rider Wallet Balance: <strong style="color:#4ade80;">₹ ${(Number(u.wallet) || 0).toFixed(2)}</strong>`;
+      } else {
+        preview.style.display = 'block';
+        preview.innerHTML = `<span style="color:#f59e0b;">⚠️ ID "${id}" abhi list me nahi dikh rahi (Save dabane par direct ID par credit ho jayega).</span>`;
+      }
+    }
+
+    async function creditUserWalletFromLedger() {
+      const targetId = document.getElementById('walletTargetIdInput').value.trim().toUpperCase();
+      const amt = parseFloat(document.getElementById('walletTopupAmount').value);
+      const note = document.getElementById('walletTopupNote').value.trim() || "HQ Ledger Direct Top-Up";
+
+      if (!targetId) { alert("Kripya Captain ya Rider ki ID dalein (e.g. CAP-4168 ya YR-9169)."); return; }
+      if (!amt || amt <= 0) { alert("Kripya sahi recharge amount dalein."); return; }
+
+      const cap = await cloudGet(`captains/${targetId}`);
+      const rider = await cloudGet(`riders/${targetId}`);
+      const netNode = await cloudGet(`network/${targetId}`);
+
+      if (!cap && !rider && !netNode) {
+        alert(`❌ ID "${targetId}" cloud database mein nahi mili. Sahi ID check karein.`);
+        return;
+      }
+
+      let userName = targetId;
+      let role = "User";
+      let newBalance = amt;
+
+      if (cap) {
+        userName = cap.name || targetId;
+        role = "Captain";
+        newBalance = +((Number(cap.wallet) || 0) + amt).toFixed(2);
+        await cloudPatch(`captains/${targetId}`, { wallet: newBalance });
+        if (netNode) await cloudPatch(`network/${targetId}`, { wallet: newBalance });
+      } else {
+        const targetObj = rider || netNode;
+        userName = targetObj.name || targetId;
+        role = "Rider";
+        newBalance = +((Number(targetObj.wallet) || 0) + amt).toFixed(2);
+        if (rider) await cloudPatch(`riders/${targetId}`, { wallet: newBalance });
+        if (netNode) await cloudPatch(`network/${targetId}`, { wallet: newBalance });
+      }
+
+      await cloudPush('wallet_topups', {
+        targetId, userName, role, amt, newBalance, note,
+        date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      });
+
+      document.getElementById('walletTopupAmount').value = '';
+      document.getElementById('walletTopupNote').value = '';
+      refreshAllHqModules();
+      lookupWalletUserPreview(targetId);
+      alert(`✅ ₹${amt} successfully ${userName} (${targetId}) ke wallet mein add ho gaye!\nNaya Balance: ₹${newBalance.toFixed(2)}`);
+    }
+
+    async function renderWalletTopupHistory() {
+      const topupsObj = await cloudGet('wallet_topups') || {};
+      const list = Object.values(topupsObj).reverse();
+      const container = document.getElementById('walletTopupHistoryList');
+      if (!container) return;
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Abhi tak HQ Ledger se koi wallet top-up nahi hua hai.</div>';
+        return;
+      }
+      container.innerHTML = list.slice(0, 15).map(t => `
+        <div class="exp-item">
+          <div>
+            <strong style="color:#f8fafc;">${t.role === 'Captain' ? '🧑‍✈️' : '🧳'} ${t.userName} (${t.targetId})</strong>
+            <div style="color:#94a3b8; font-size:11px;">${t.note} • ${t.date}</div>
+          </div>
+          <div style="text-align:right;">
+            <strong style="color:#4ade80; font-size:13.5px;">+ ₹${t.amt}</strong>
+            <div style="font-size:10px; color:#38bdf8;">Bal: ₹${Number(t.newBalance || 0).toFixed(2)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    /* ========================================================
+       CUSTOMER IVR SUPPORT TICKETS IN HQ LEDGER
+       ======================================================== */
+    async function renderSupportTickets() {
+      const ticketsObj = await cloudGet('support_tickets') || {};
+      const list = Object.entries(ticketsObj).map(([k, v]) => ({ key: k, ...v })).reverse();
+      const box = document.getElementById('hqSupportTicketsList');
+      if (!box) return;
+
+      if (list.length === 0) {
+        box.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Abhi koi customer IVR support ticket pending nahi hai.</div>';
+        return;
+      }
+      box.innerHTML = list.map(t => `
+        <div class="entity-card" style="border-color:${t.status === 'RESOLVED' ? '#10b981' : '#f59e0b'};">
+          <div class="ent-top">
+            <div>
+              <div class="ent-name">🎧 ${t.topic} • <span style="color:#38bdf8;">${t.riderName} (${t.riderId})</span></div>
+              <div class="ent-meta">${t.message}<br><span style="font-size:10px; color:#64748b;">🕒 ${t.date} • Status: <strong>${t.status || 'OPEN'}</strong></span></div>
+            </div>
+            ${t.status !== 'RESOLVED'
+              ? `<button class="btn-sm btn-call" onclick="resolveSupportTicket('${t.key}')">✅ Resolve</button>`
+              : `<span style="color:#4ade80; font-size:11px; font-weight:800;">SOLVED</span>`}
+          </div>
+        </div>`).join('');
+    }
+
+    async function resolveSupportTicket(ticketKey) {
+      await cloudPatch(`support_tickets/${ticketKey}`, { status: 'RESOLVED' });
+      renderSupportTickets();
+    }
+
+    function renderLiveRideMonitor(ride) {
+      const box = document.getElementById('hqLiveRideMonitorBox');
+      if (!box) return;
+      if (!ride || !ride.rideId) {
+        box.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Abhi cloud par koi active ride booking nahi chal rahi hai.</div>';
+        return;
+      }
+      const isOs = ride.bookingCategory === 'OUTSTATION';
+      const badgeHtml = isOs
+        ? `<span style="background:#f59e0b; color:#0b1329; font-size:10px; font-weight:900; padding:2px 7px; border-radius:4px;">🛣️ OUTSTATION (${ride.outstationType} • ${ride.outstationDays || 1}D)</span>`
+        : `<span style="background:#0284c7; color:#fff; font-size:10px; font-weight:900; padding:2px 7px; border-radius:4px;">🚖 LOCAL RIDE</span>`;
+
+      box.innerHTML = `
+        <div class="entity-card" style="border-color:${isOs ? '#f59e0b' : '#10b981'};">
+          <div class="ent-top">
+            <div>
+              <div class="ent-name">#${ride.rideId} • ${ride.vehicleType} ${badgeHtml}</div>
+              <div class="ent-meta">
+                👤 Rider: <strong>${ride.riderName}</strong> (${ride.riderId}) • Distance: <strong>${ride.distanceKm} KM</strong><br>
+                📍 ${ride.pickupAddress} → 🏁 ${ride.dropAddress}<br>
+                Status: <strong style="color:#4ade80;">${ride.status}</strong> ${ride.captainName ? `• Captain: <strong>${ride.captainName}</strong>` : ''}
+              </div>
+            </div>
+            <div style="font-size:18px; font-weight:900; color:#4ade80;">₹${ride.customerFare}</div>
+          </div>
+        </div>`;
+    }
+
+    function get4LevelDownlineData(userId) {
+      const l1 = cachedNetwork.filter(u => u.sponsorId === userId);
+      const l1Ids = l1.map(u => u.id);
+      const l2 = cachedNetwork.filter(u => l1Ids.includes(u.sponsorId));
+      const l2Ids = l2.map(u => u.id);
+      const l3 = cachedNetwork.filter(u => l2Ids.includes(u.sponsorId));
+      const l3Ids = l3.map(u => u.id);
+      const l4 = cachedNetwork.filter(u => l3Ids.includes(u.sponsorId));
+
+      const userNode = cachedNetwork.find(u => u.id === userId);
+      const totalNetworkIncome = userNode ? (Number(userNode.earnedBonus) || 0) : 0;
+      const totalTeamSize = l1.length + l2.length + l3.length + l4.length;
+      return { l1, l2, l3, l4, totalTeamSize, totalNetworkIncome };
+    }
+
+    function setNetRoleFilter(role) {
+      netRoleFilter = role;
+      document.getElementById('btnFilterNetAll').style.background = role === 'ALL' ? '#0284c7' : '#334155';
+      document.getElementById('btnFilterNetRider').style.background = role === 'Rider' ? '#d97706' : '#334155';
+      document.getElementById('btnFilterNetCap').style.background = role === 'Captain' ? '#0891b2' : '#334155';
+      renderNetworkUsersDirectory();
+    }
+
+    function renderNetworkUsersDirectory() {
+      const q = (document.getElementById('searchNetworkUserInput').value || '').toLowerCase();
+      const container = document.getElementById('networkUsersDirectoryList');
+
+      const mapById = {};
+      cachedRiders.forEach(r => mapById[r.id] = { id: r.id, name: r.name, role: 'Rider', phone: r.phone, sponsorId: r.sponsorId || 'HQ', earnedBonus: 0 });
+      cachedCaptains.forEach(c => mapById[c.id] = { id: c.id, name: c.name, role: 'Captain', phone: c.phone, sponsorId: c.sponsorId || 'HQ', earnedBonus: 0 });
+      cachedNetwork.forEach(n => mapById[n.id] = { ...(mapById[n.id] || {}), ...n });
+
+      const allUsers = Object.values(mapById).filter(u => {
+        if (netRoleFilter !== 'ALL' && u.role !== netRoleFilter) return false;
+        return (u.name || '').toLowerCase().includes(q) || (u.id || '').toLowerCase().includes(q) || (u.phone || '').includes(q);
+      });
+
+      if (allUsers.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Koi matching Rider ya Captain nahi mila.</div>';
+        return;
+      }
+
+      container.innerHTML = allUsers.map(u => {
+        const netData = get4LevelDownlineData(u.id);
+        const roleBadge = u.role === 'Captain' ? `<span class="badge-cab">🧑‍✈️ Captain</span>` : `<span class="badge-rider">🧳 Rider</span>`;
+
+        return `
+          <div class="entity-card" style="border-color:#0e7490;">
+            <div class="ent-top">
+              <div>
+                <div class="ent-name">${u.name} ${roleBadge}</div>
+                <div class="ent-meta">🆔 <strong>${u.id}</strong> • Sponsor: <strong>${u.sponsorId || 'HQ'}</strong> • Total Team: <strong>${netData.totalTeamSize} Members</strong></div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px; color:#94a3b8; font-weight:800;">NETWORK INCOME</div>
+                <div style="font-size:18px; font-weight:900; color:#4ade80;">₹ ${netData.totalNetworkIncome.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div class="net-summary-grid">
+              <div class="net-lvl-card"><div class="net-lvl-title">Level 1</div><div class="net-lvl-val">${netData.l1.length}</div><div class="net-lvl-rate">₹0.50/KM</div></div>
+              <div class="net-lvl-card"><div class="net-lvl-title">Level 2</div><div class="net-lvl-val">${netData.l2.length}</div><div class="net-lvl-rate">₹0.30/KM</div></div>
+              <div class="net-lvl-card"><div class="net-lvl-title">Level 3</div><div class="net-lvl-val">${netData.l3.length}</div><div class="net-lvl-rate">₹0.15/KM</div></div>
+              <div class="net-lvl-card"><div class="net-lvl-title">Level 4</div><div class="net-lvl-val">${netData.l4.length}</div><div class="net-lvl-rate">₹0.05/KM</div></div>
+            </div>
+
+            <div class="action-row">
+              <button class="btn-sm btn-net" onclick="openFull4LevelTreeModal('${u.id}')">🌳 View Full 4-Level Team Tree</button>
+              <button class="btn-sm btn-personal" onclick="jumpToPersonalOffer('${u.role}', '${u.id}')">🎯 Send Personal Offer</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function openFull4LevelTreeModal(userId) {
+      const user = cachedNetwork.find(u => u.id === userId) || cachedRiders.find(r => r.id === userId) || cachedCaptains.find(c => c.id === userId);
+      if (!user) return;
+      const d = get4LevelDownlineData(userId);
+
+      const renderLevelList = (lvlTitle, rateText, list) => `
+        <div class="doc-detail-box">
+          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <strong style="color:#38bdf8;">${lvlTitle} (${list.length} Members)</strong>
+            <span style="color:#4ade80; font-size:11px; font-weight:800;">${rateText}</span>
+          </div>
+          ${list.length === 0
+            ? `<div style="font-size:11px; color:#64748b;">Is level par abhi koi member nahi hai.</div>`
+            : list.map(m => `<span class="net-member-pill">${m.role === 'Captain' ? '🚖' : '🧳'} <strong>${m.name}</strong> (${m.id}) • ${Number(m.km || 0)} KM</span>`).join('')}
+        </div>`;
+
+      document.getElementById('docModalTitle').innerText = `🌳 ${user.name} (${user.id}) — 4-Level Network`;
+      document.getElementById('docModalContent').innerHTML = `
+        <div class="doc-detail-box" style="border-color:#10b981; text-align:center;">
+          <div style="font-size:11px; color:#6ee7b7; font-weight:800;">TOTAL 4-LEVEL REFERRAL INCOME</div>
+          <div style="font-size:28px; font-weight:900; color:#4ade80;">₹ ${d.totalNetworkIncome.toFixed(2)}</div>
+          <div style="font-size:11px; color:#cbd5e1;">Total Downline Team: <strong>${d.totalTeamSize} Members</strong> • Sponsor: ${user.sponsorId || 'HQ'}</div>
+        </div>
+        ${renderLevelList('Level 1 (Direct Referral)', '₹0.50 (50p) / KM', d.l1)}
+        ${renderLevelList('Level 2 Team', '₹0.30 (30p) / KM', d.l2)}
+        ${renderLevelList('Level 3 Team', '₹0.15 (15p) / KM', d.l3)}
+        ${renderLevelList('Level 4 Team', '₹0.05 (5p) / KM', d.l4)}
+      `;
+      document.getElementById('docViewerModal').style.display = 'flex';
+    }
+
+    function populatePersonalTargetUsers() {
+      const role = document.getElementById('personalTargetRole').value;
+      const selectEl = document.getElementById('personalTargetUserId');
+      const list = role === 'Captain' ? cachedCaptains : cachedRiders;
+
+      if (list.length === 0) {
+        selectEl.innerHTML = `<option value="">-- Koi ${role} registered nahi hai --</option>`;
+        return;
+      }
+      selectEl.innerHTML = list.map(u => `<option value="${u.id}">${u.name} (${u.id}) ${u.vehNum ? '• ' + u.vehNum : ''}</option>`).join('');
+    }
+
+    function jumpToPersonalOffer(role, userId) {
+      const personalTabBtn = document.querySelectorAll('.tab-btn')[3];
+      switchHqTab('personal', personalTabBtn);
+      document.getElementById('personalTargetRole').value = role === 'Captain' ? 'Captain' : 'Rider';
+      populatePersonalTargetUsers();
+      document.getElementById('personalTargetUserId').value = userId;
+    }
+
+    async function sendPersonalOfferToUser() {
+      const role = document.getElementById('personalTargetRole').value;
+      const userId = document.getElementById('personalTargetUserId').value;
+      const title = document.getElementById('personalOfferTitle').value.trim() || "🎁 Personal VIP Scheme";
+      const msg = document.getElementById('personalOfferMsg').value.trim();
+
+      if (!userId) { alert("Kripya pehle ek Rider ya Captain select karein."); return; }
+      if (!msg) { alert("Kripya personal offer ya scheme ka message likhein."); return; }
+
+      const list = role === 'Captain' ? cachedCaptains : cachedRiders;
+      const targetUser = list.find(u => u.id === userId);
+      const userName = targetUser ? targetUser.name : userId;
+
+      await cloudSet(`personal_offers/${userId}`, {
+        userId, userName, role, title, msg,
+        sentAt: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      });
+
+      document.getElementById('personalOfferTitle').value = '';
+      document.getElementById('personalOfferMsg').value = '';
+      renderActivePersonalOffers();
+      alert(`✅ Personal Offer sirf ${userName} (${userId}) ke app par bhej diya gaya hai!`);
+    }
+
+    async function removePersonalOffer(userId) {
+      await cloudSet(`personal_offers/${userId}`, null);
+      renderActivePersonalOffers();
+    }
+
+    async function renderActivePersonalOffers() {
+      const offersObj = await cloudGet('personal_offers') || {};
+      const offers = Object.values(offersObj);
+      const container = document.getElementById('activePersonalOffersList');
+      if (!container) return;
+
+      if (offers.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Abhi kisi individual Rider ya Captain ko koi active personal offer nahi bheja gaya hai.</div>';
+        return;
+      }
+
+      container.innerHTML = offers.map(o => `
+        <div class="entity-card" style="border-color:#f59e0b;">
+          <div class="ent-top">
+            <div>
+              <div class="ent-name">${o.title} → <span style="color:#fde047;">${o.userName} (${o.userId})</span></div>
+              <div class="ent-meta">${o.msg}<br><span style="font-size:10px; color:#64748b;">Role: ${o.role} • Sent: ${o.sentAt}</span></div>
+            </div>
+            <button class="btn-sm btn-suspend" onclick="removePersonalOffer('${o.userId}')">✕ Remove</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function renderCallRecordings() {
+      const recObj = await cloudGet('call_recordings') || {};
+      const list = Object.values(recObj).reverse();
+      const container = document.getElementById('callRecordingsList');
+      if (list.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:12px;">Abhi tak koi In-App Masked Call record nahi hui hai.</div>';
+        return;
+      }
+      container.innerHTML = list.map(rec => `
+        <div class="entity-card" style="border-color:#0e7490;">
+          <div class="ent-top">
+            <div>
+              <div class="ent-name">📞 ${rec.callerRole}: ${rec.callerName} → ${rec.receiverName}</div>
+              <div class="ent-meta">🆔 Ride: <strong>${rec.rideId}</strong> • ⏱️ Duration: <strong>${rec.durationSec} sec</strong> • 🕒 ${rec.timestamp}</div>
+            </div>
+            <span style="background:#7f1d1d; color:#fecaca; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:4px;">RECORDED</span>
+          </div>
+          ${rec.audioData ? `<audio controls src="${rec.audioData}"></audio>` : `<div style="font-size:11px; color:#f59e0b;">(Virtual Call Log)</div>`}
+        </div>`).join('');
+    }
+
+    function renderOverviewAndAreas() {
+      const activeCaps = cachedCaptains.filter(c => c.status === 'ACTIVE');
+      const pendingCaps = cachedCaptains.filter(c => c.status === 'PENDING_HQ');
+      const totalKm = cachedCaptains.reduce((sum, c) => sum + (Number(c.km) || 0), 0);
+      const grossRev = Math.round((cachedCaptains.length * 30) + (totalKm * 2.5));
+      const totalExp = cachedExpenses.reduce((sum, e) => sum + Number(e.amt || 0), 0);
+      const netProfit = grossRev - totalExp;
+
+      document.getElementById('kpiActiveCabs').innerText = activeCaps.length;
+      document.getElementById('kpiPendingCabs').innerText = pendingCaps.length;
+      document.getElementById('kpiTotalRiders').innerText = cachedRiders.length;
+      document.getElementById('kpiGrossRev').innerText = `₹ ${grossRev.toLocaleString()}`;
+      document.getElementById('kpiNetProfit').innerText = `₹ ${netProfit.toLocaleString()}`;
+
+      const zones = ["Shalimar Garden", "Noida Sector 62", "Indirapuram", "Anand Vihar", "Vaishali"];
+      document.getElementById('areaStatsContainer').innerHTML = zones.map(zone => {
+        const zCaps = cachedCaptains.filter(c => (c.area || '').toLowerCase().includes(zone.split(' ')[0].toLowerCase())).length;
+        const zRiders = cachedRiders.filter(r => (r.area || '').toLowerCase().includes(zone.split(' ')[0].toLowerCase())).length;
+        return `
+          <div class="area-row">
+            <strong style="color:#f8fafc;">📍 ${zone}</strong>
+            <div class="area-badges">
+              <span class="badge-cab">🚖 ${zCaps} Cabs</span>
+              <span class="badge-rider">🧳 ${zRiders} Riders</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function initOrUpdateHqMap() {
+      const caps = cachedCaptains.filter(c => c.status === 'ACTIVE');
+      if (!hqMap) {
+        hqMap = L.map('hqCabMap').setView([28.6600, 77.3450], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(hqMap);
+      } else { hqMap.invalidateSize(); }
+
+      cabMarkers.forEach(m => hqMap.removeLayer(m));
+      cabMarkers = [];
+
+      caps.forEach(c => {
+        const lat = c.lat || 28.6852, lon = c.lon || 77.3396;
+        const marker = L.marker([lat, lon]).addTo(hqMap)
+          .bindPopup(`<strong>🚖 ${c.vehNum || c.id}</strong><br>Captain: ${c.name}<br>Area: ${c.area || 'NCR'}<br>📞 ${c.phone || ''}`);
+        cabMarkers.push(marker);
+      });
+      renderLiveCabsList();
+    }
+
+    function renderLiveCabsList() {
+      const q = (document.getElementById('searchLiveCabInput').value || '').toLowerCase();
+      const caps = cachedCaptains.filter(c => c.status === 'ACTIVE');
+      document.getElementById('liveCabsListContainer').innerHTML = caps.length === 0
+        ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi verified active cab online nahi hai.</div>'
+        : caps.filter(c => (c.name || '').toLowerCase().includes(q) || (c.vehNum || '').toLowerCase().includes(q) || (c.area || '').toLowerCase().includes(q))
+          .map(c => `
+            <div class="entity-card">
+              <div class="ent-top">
+                <div>
+                  <div class="ent-name">🚖 ${c.vehNum || c.id} • ${c.name}</div>
+                  <div class="ent-meta">📍 Live Zone: <strong>${c.area || 'NCR'}</strong> • Wallet: <strong style="color:#4ade80;">₹${(Number(c.wallet) || 0).toFixed(2)}</strong></div>
+                </div>
+                <span style="background:#064e3b; color:#6ee7b7; font-size:10px; font-weight:800; padding:3px 7px; border-radius:5px;">ONLINE</span>
+              </div>
+              <div class="action-row">
+                <button class="btn-sm btn-loc" onclick="focusCabOnMap(${c.lat || 28.6852}, ${c.lon || 77.3396}, '${c.vehNum || c.id}')">🛰️ Track Live</button>
+                <button class="btn-sm btn-call" onclick="jumpToWalletTopup('${c.id}')">💳 Add Wallet</button>
+              </div>
+            </div>`).join('');
+    }
+
+    function focusCabOnMap(lat, lon, vehNum) {
+      if (!hqMap) return;
+      hqMap.setView([lat, lon], 15);
+      cabMarkers.forEach(m => { if (m.getPopup().getContent().includes(vehNum)) m.openPopup(); });
+      window.scrollTo({ top: 80, behavior: 'smooth' });
+    }
+
+    function renderCaptainsList() {
+      const q = (document.getElementById('searchCapInput').value || '').toLowerCase();
+      document.getElementById('hqCaptainsContainer').innerHTML = cachedCaptains.length === 0
+        ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi Captain cloud par registered nahi hai.</div>'
+        : cachedCaptains.filter(c => (c.name || '').toLowerCase().includes(q) || (c.vehNum || '').toLowerCase().includes(q) || (c.area || '').toLowerCase().includes(q) || (c.phone || '').includes(q))
+          .map(c => {
+            const isPending = c.status === 'PENDING_HQ';
+            const statusColor = c.status === 'ACTIVE' ? '#10b981' : (isPending ? '#fbbf24' : '#ef4444');
+            const statusLabel = isPending ? '⏳ PENDING COMPANY VERIFICATION' : c.status;
+            const netStats = get4LevelDownlineData(c.id);
+            return `
+              <div class="entity-card ${isPending ? 'pending-hq' : (c.status === 'SUSPENDED' ? 'suspended' : '')}">
+                <div class="ent-top">
+                  <div>
+                    <div class="ent-name">${c.name} <span style="font-size:11px; color:#38bdf8;">(${c.vehNum || c.id})</span></div>
+                    <div class="ent-meta">
+                      🆔 ${c.id} • Wallet: <strong style="color:#4ade80;">₹${(Number(c.wallet) || 0).toFixed(2)}</strong> • Team: <strong>${netStats.totalTeamSize}</strong><br>
+                      Status: <strong style="color:${statusColor};">${statusLabel}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="action-row">
+                  <button class="btn-sm btn-doc" onclick="viewCaptainOriginalDocs('${c.id}')">🖼️ Docs</button>
+                  <button class="btn-sm btn-call" onclick="jumpToWalletTopup('${c.id}')">💳 Top-Up</button>
+                  <button class="btn-sm btn-net" onclick="openFull4LevelTreeModal('${c.id}')">🌳 Tree</button>
+                  <button class="btn-sm btn-personal" onclick="jumpToPersonalOffer('Captain', '${c.id}')">🎯 Offer</button>
+                  ${isPending
+                    ? `<button class="btn-sm btn-approve" onclick="toggleCaptainStatus('${c.id}', 'ACTIVE')">✅ Approve</button>`
+                    : (c.status === 'ACTIVE'
+                        ? `<button class="btn-sm btn-suspend" onclick="toggleCaptainStatus('${c.id}', 'SUSPENDED')">🚫 Suspend</button>`
+                        : `<button class="btn-sm btn-activate" onclick="toggleCaptainStatus('${c.id}', 'ACTIVE')">✅ Activate</button>`)}
+                </div>
+              </div>`;
+          }).join('');
+    }
+
+    function renderDocImageBlock(title, expiryText, imgData) {
+      return `
+        <div class="orig-doc-card">
+          <div class="orig-doc-header">
+            <span>${title}</span>
+            ${expiryText ? `<span style="color:#fde047; font-size:11px;">Valid Upto: ${expiryText}</span>` : ''}
+          </div>
+          ${imgData
+            ? `<img class="orig-doc-img" src="${imgData}" alt="${title}" onclick="window.open('${imgData}', '_blank')">`
+            : `<div style="font-size:11px; color:#f87171; padding:8px 0;">⚠️ Photo upload nahi ki gayi hai</div>`}
+        </div>`;
+    }
+
+    function viewCaptainOriginalDocs(capId) {
+      const c = cachedCaptains.find(x => x.id === capId);
+      if (!c) return;
+      const exp = c.expiryDates || {}, imgs = c.docImages || {}, bank = c.bankKyc || {}, bankImgs = bank.docs || {};
+
+      document.getElementById('docModalTitle').innerText = `🖼️ Original Docs: ${c.name} (${c.id})`;
+      document.getElementById('docModalContent').innerHTML = `
+        <div class="doc-detail-box">
+          <p><strong>Captain:</strong> ${c.name} • <strong>Mobile:</strong> ${c.phone || '-'}</p>
+          <p><strong>Cab No:</strong> ${c.vehNum || '-'} (${c.vehType || 'Cab'}) • <strong>Sponsor:</strong> ${c.sponsorId || 'HQ'}</p>
+        </div>
+        ${renderDocImageBlock('1. Captain Live Selfie', '', imgs.refSelfie)}
+        ${renderDocImageBlock('2. Yellow Plate RC (Registration)', exp.rc, imgs.capRc)}
+        ${renderDocImageBlock('3. Commercial Driving License (DL)', exp.dl, imgs.capDl)}
+        ${renderDocImageBlock('4. Commercial Cab Insurance', exp.ins, imgs.capIns)}
+        ${renderDocImageBlock('5. Gaadi Fitness Certificate', exp.fit, imgs.capFit)}
+        ${bank.accNum ? `
+          <div class="doc-detail-box" style="border-color:#8b5cf6;">
+            <p style="color:#c4b5fd; font-weight:900;">🏦 Bank & PAN Details</p>
+            <p><strong>PAN:</strong> ${bank.pan || '-'} | <strong>ID No:</strong> ${bank.aadhaar || '-'}</p>
+            <p><strong>A/c No:</strong> ${bank.accNum} | <strong>IFSC:</strong> ${bank.ifsc}</p>
+          </div>
+          ${bankImgs.capAadhaarFront ? renderDocImageBlock('ID Proof Front', '', bankImgs.capAadhaarFront) : ''}
+          ${bankImgs.capPanPhoto ? renderDocImageBlock('PAN Card Photo', '', bankImgs.capPanPhoto) : ''}
+          ${bankImgs.capBankProof ? renderDocImageBlock('Passbook / Cheque', '', bankImgs.capBankProof) : ''}
+        ` : ''}
+        ${c.status === 'PENDING_HQ' ? `
+          <button class="btn-hq" style="background:#10b981; color:#0b1329; margin-top:8px;" onclick="toggleCaptainStatus('${c.id}', 'ACTIVE'); document.getElementById('docViewerModal').style.display='none';">
+            ✅ VERIFY ORIGINAL DOCS & ACTIVATE CAPTAIN
+          </button>` : ''}
+      `;
+      document.getElementById('docViewerModal').style.display = 'flex';
+    }
+
+    async function toggleCaptainStatus(capId, newStatus) {
+      const msg = newStatus === 'ACTIVE'
+        ? `Kya aapne Captain ${capId} ke sabhi original documents check kar liye hain aur duty APPROVE karna chahte hain?`
+        : `Kya aap Captain ${capId} ko ${newStatus} karna chahte hain?`;
+      if (confirm(msg)) {
+        await cloudPatch(`captains/${capId}`, { status: newStatus });
+        await cloudPatch(`network/${capId}`, { status: newStatus });
+        refreshAllHqModules();
+      }
+    }
+
+    function renderRidersList() {
+      const q = (document.getElementById('searchRiderInput').value || '').toLowerCase();
+      document.getElementById('hqRidersContainer').innerHTML = cachedRiders.length === 0
+        ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi Rider cloud par registered nahi hai.</div>'
+        : cachedRiders.filter(r => (r.name || '').toLowerCase().includes(q) || (r.id || '').toLowerCase().includes(q) || (r.phone || '').includes(q))
+          .map(r => {
+            const netStats = get4LevelDownlineData(r.id);
+            return `
+              <div class="entity-card ${r.status === 'SUSPENDED' ? 'suspended' : ''}">
+                <div class="ent-top">
+                  <div>
+                    <div class="ent-name">${r.name} <span style="font-size:11px; color:#f59e0b;">(${r.id})</span></div>
+                    <div class="ent-meta">
+                      📞 ${r.phone || '-'} • Wallet: <strong style="color:#4ade80;">₹${(Number(r.wallet) || 0).toFixed(2)}</strong> • Team: <strong>${netStats.totalTeamSize}</strong><br>
+                      Status: <strong style="color:${r.status === 'ACTIVE' ? '#10b981' : '#ef4444'};">${r.status}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="action-row">
+                  <button class="btn-sm btn-call" onclick="jumpToWalletTopup('${r.id}')">💳 Top-Up</button>
+                  <button class="btn-sm btn-doc" onclick="viewRiderDocs('${r.id}')">🖼️ Docs</button>
+                  <button class="btn-sm btn-net" onclick="openFull4LevelTreeModal('${r.id}')">🌳 Tree</button>
+                  <button class="btn-sm btn-personal" onclick="jumpToPersonalOffer('Rider', '${r.id}')">🎯 Offer</button>
+                  ${r.status === 'ACTIVE'
+                    ? `<button class="btn-sm btn-suspend" onclick="toggleRiderStatus('${r.id}', 'SUSPENDED')">🚫 Suspend</button>`
+                    : `<button class="btn-sm btn-activate" onclick="toggleRiderStatus('${r.id}', 'ACTIVE')">✅ Activate</button>`}
+                </div>
+              </div>`;
+          }).join('');
+    }
+
+    function viewRiderDocs(riderId) {
+      const r = cachedRiders.find(x => x.id === riderId);
+      if (!r) return;
+      const b = r.bankKyc || {}, bImgs = b.docs || {};
+      document.getElementById('docModalTitle').innerText = `🧳 Rider Original Docs: ${r.name}`;
+      document.getElementById('docModalContent').innerHTML = `
+        <div class="doc-detail-box">
+          <p><strong>Rider ID:</strong> ${r.id} • <strong>Mobile:</strong> ${r.phone || '-'}</p>
+          <p><strong>Sponsor ID:</strong> ${r.sponsorId || 'HQ'}</p>
+          <p><strong>PAN Card:</strong> ${b.pan || 'Pending'} | <strong>ID No:</strong> ${b.aadhaar || 'Pending'}</p>
+          <p><strong>Bank A/c:</strong> ${b.accNum || 'Pending'} (IFSC: ${b.ifsc || '-'})</p>
+          <p><strong>UPI ID:</strong> ${b.upi || '-'}</p>
+        </div>
+        ${bImgs.aadhaarFront ? renderDocImageBlock('1. ID Proof Front', '', bImgs.aadhaarFront) : ''}
+        ${bImgs.aadhaarBack ? renderDocImageBlock('2. ID Proof Back', '', bImgs.aadhaarBack) : ''}
+        ${bImgs.panPhoto ? renderDocImageBlock('3. PAN Card Photo', '', bImgs.panPhoto) : ''}
+        ${bImgs.bankProof ? renderDocImageBlock('4. Cheque / Passbook Photo', '', bImgs.bankProof) : ''}
+      `;
+      document.getElementById('docViewerModal').style.display = 'flex';
+    }
+
+    async function toggleRiderStatus(riderId, newStatus) {
+      if (confirm(`Kya aap Rider ${riderId} ko ${newStatus} karna chahte hain?`)) {
+        await cloudPatch(`riders/${riderId}`, { status: newStatus });
+        refreshAllHqModules();
+      }
+    }
+
+    async function addCompanyExpense() {
+      const cat = document.getElementById('expCategory').value;
+      const desc = document.getElementById('expDesc').value.trim();
+      const amt = parseFloat(document.getElementById('expAmount').value);
+      if (!desc || !amt || amt <= 0) { alert("Kharcha vivaran aur sahi amount dalein."); return; }
+
+      await cloudPush('expenses', { cat, desc, amt, date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) });
+      document.getElementById('expDesc').value = '';
+      document.getElementById('expAmount').value = '';
+      refreshAllHqModules();
+      alert("✅ Company Expense Cloud par save ho gaya!");
+    }
+
+    function renderFinanceAndExpenses() {
+      const totalKm = cachedCaptains.reduce((sum, c) => sum + (Number(c.km) || 0), 0);
+      const grossRev = Math.round((cachedCaptains.length * 30) + (totalKm * 2.5));
+      const totalExp = cachedExpenses.reduce((sum, e) => sum + Number(e.amt || 0), 0);
+      const netProfit = grossRev - totalExp;
+
+      document.getElementById('finGrossDisplay').innerText = `₹ ${grossRev.toLocaleString()}`;
+      document.getElementById('finExpDisplay').innerText = `₹ ${totalExp.toLocaleString()}`;
+      document.getElementById('finNetProfitDisplay').innerText = `₹ ${netProfit.toLocaleString()}`;
+
+      document.getElementById('expenseHistoryList').innerHTML = cachedExpenses.length === 0
+        ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi expense entry nahi hai.</div>'
+        : cachedExpenses.map(e => `
+          <div class="exp-item">
+            <div><strong style="color:#f8fafc;">${e.cat}</strong><div style="color:#94a3b8; font-size:11px;">${e.desc} • ${e.date}</div></div>
+            <strong style="color:#f87171;">- ₹${e.amt}</strong>
+          </div>`).join('');
+    }
+
+    async function renderWithdrawals() {
+      const wObj = await cloudGet('withdrawals') || {};
+      const wList = Object.values(wObj);
+      const container = document.getElementById('hqWithdrawalsList');
+      container.innerHTML = wList.length === 0 ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi pending withdrawal nahi hai.</div>' : wList.map(w => `
+        <div class="exp-item">
+          <div><strong>${w.user}</strong><div style="color:#94a3b8; font-size:11px;">UPI/Bank: ${w.upi} • Status: <strong>${w.status}</strong></div></div>
+          <div style="text-align:right;">
+            <div style="color:#4ade80; font-weight:900;">₹${w.amt}</div>
+            ${w.status === 'PENDING' ? `<button class="btn-sm btn-call" style="margin-top:4px;" onclick="approveWithdrawal('${w.id}')">Pay Now</button>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    async function approveWithdrawal(wdId) {
+      await cloudPatch(`withdrawals/${wdId}`, { status: "PAID ✅" });
+      renderWithdrawals();
+    }
+
+    async function publishBroadcast() {
+      const target = document.getElementById('promoTarget').value;
+      const msg = document.getElementById('promoMsgInput').value.trim();
+      if (!msg) { alert("Offer message likhein."); return; }
+      await cloudSet('latest_broadcast', { target, msg, time: new Date().toLocaleTimeString() });
+      document.getElementById('promoMsgInput').value = '';
+      alert("✅ Bulk Offer Cloud ke zariye sabhi apps par bhej diya gaya hai!");
+    }
+
+    async function createPromoCoupon() {
+      const code = document.getElementById('newCouponCode').value.trim().toUpperCase();
+      const amt = parseFloat(document.getElementById('newCouponAmt').value);
+      if (!code || !amt) { alert("Coupon code aur amount dono dalein."); return; }
+      await cloudSet(`coupons/${code}`, { code, amt });
+      document.getElementById('newCouponCode').value = '';
+      document.getElementById('newCouponAmt').value = '';
+      alert(`✅ Coupon "${code}" (₹${amt} OFF) Cloud par active ho gaya hai!`);
+    }
+  </script>
+</body>
+</html>

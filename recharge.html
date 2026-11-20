@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>YourRide - Driver Wallet Recharge</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 12px;
+    }
+    .box {
+      width: 100%;
+      max-width: 420px;
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #334155;
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      border-bottom: 2px solid #f59e0b;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand { font-size: 1.2rem; font-weight: 800; color: #f59e0b; }
+    .brand span { color: #ffffff; }
+    .wallet-status {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .current-bal {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: #38bdf8;
+      margin-top: 4px;
+    }
+    .plan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .plan-btn {
+      background: #0f172a;
+      border: 1.5px solid #334155;
+      border-radius: 8px;
+      padding: 10px 4px;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .plan-btn.active {
+      border-color: #f59e0b;
+      background: #f59e0b22;
+      color: #f59e0b;
+    }
+    /* QR Section */
+    .qr-container {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      color: #0f172a;
+      margin-bottom: 16px;
+    }
+    .qr-img {
+      width: 170px;
+      height: 170px;
+      margin: 10px auto;
+      display: block;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .upi-info {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 6px;
+      word-break: break-all;
+    }
+    /* Input Form */
+    .input-group {
+      margin-bottom: 12px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .input-box {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f172a;
+      border: 1.5px solid #334155;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .input-box:focus { border-color: #f59e0b; }
+    .btn-submit {
+      width: 100%;
+      background: #22c55e;
+      color: #052e16;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    .btn-submit:active { background: #16a34a; }
+    /* Success Alert */
+    .success-card {
+      display: none;
+      background: #064e3b;
+      border: 1.5px solid #22c55e;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #ecfdf5;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <div class="header">
+    <div class="brand">Your<span>Ride</span> Top-Up</div>
+    <div style="font-size: 0.75rem; color: #94a3b8;">Driver Wallet</div>
+  </div>
+
+  <!-- Wallet Status -->
+  <div class="wallet-status">
+    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Current Wallet Balance</div>
+    <div class="current-bal" id="walletBal">₹452.00</div>
+    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">(Minimum balance required: ₹100.00)</div>
+  </div>
+
+  <!-- Select Recharge Amount -->
+  <div style="font-size: 0.8rem; color: #cbd5e1; font-weight: 700; margin-bottom: 8px;">Recharge Amount Chuniye:</div>
+  <div class="plan-grid">
+    <button class="plan-btn active" onclick="selectAmount(200, this)">₹200</button>
+    <button class="plan-btn" onclick="selectAmount(500, this)">₹500</button>
+    <button class="plan-btn" onclick="selectAmount(1000, this)">₹1000</button>
+  </div>
+
+  <!-- Dynamic UPI QR Area -->
+  <div class="qr-container">
+    <div style="font-weight: 800; font-size: 0.95rem; color: #0f172a;">GPay / PhonePe / Paytm se Scan Karein</div>
+    <!-- Free Dynamic QR API -->
+    <img id="qrImage" class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=upi://pay?pa=yourride@upi&pn=YourRide&am=200&cu=INR" alt="UPI QR">
+    <div style="font-size: 1rem; font-weight: 800; color: #047857;" id="qrAmountText">Pay: ₹200.00</div>
+    <div class="upi-info">UPI ID: <strong>yourride@upi</strong> (Direct 0% Gateway Charge)</div>
+  </div>
+
+  <!-- UTR Verification Form -->
+  <div class="input-group">
+    <label>Payment ke baad 12-Digit UTR / Ref No. Dalein:</label>
+    <input type="text" id="utrInput" class="input-box" placeholder="e.g. 423456789012" maxlength="12">
+  </div>
+
+  <button class="btn-submit" onclick="submitRecharge()">RECHARGE VERIFY KAREIN</button>
+
+  <!-- Success Message -->
+  <div class="success-card" id="successMsg">
+    ✓ Recharge Request Verified!<br>
+    <strong id="addedAmountText">+₹200.00</strong> wallet me add ho gaya hai.<br>
+    Naya Balance: <strong id="newBalText">₹652.00</strong>
+  </div>
+</div>
+
+<script>
+  let selectedAmt = 200;
+  let currentWallet = 452.00;
+
+  function selectAmount(amt, btn) {
+    selectedAmt = amt;
+    // update buttons
+    let buttons = document.querySelectorAll('.plan-btn');
+    buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // update QR Image URL
+    let upiString = "upi://pay?pa=yourride@upi%26pn=YourRide%26am=" + amt + "%26cu=INR";
+    document.getElementById("qrImage").src = "https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=" + encodeURIComponent(upiString);
+    document.getElementById("qrAmountText").innerText = "Pay: ₹" + amt + ".00";
+    document.getElementById("successMsg").style.display = "none";
+  }
+
+  function submitRecharge() {
+    let utr = document.getElementById("utrInput").value.trim();
+    if (utr.length < 8) {
+      alert("Kripya sahi 12-Digit UTR / Reference number enter karein!");
+      return;
+    }
+
+    currentWallet += selectedAmt;
+    document.getElementById("walletBal").innerText = "₹" + currentWallet.toFixed(2);
+    document.getElementById("addedAmountText").innerText = "+₹" + selectedAmt.toFixed(2);
+    document.getElementById("newBalText").innerText = "₹" + currentWallet.toFixed(2);
+    document.getElementById("successMsg").style.display = "block";
+    document.getElementById("utrInput").value = "";
+  }
+</script>
+
+</body>
+</html>
