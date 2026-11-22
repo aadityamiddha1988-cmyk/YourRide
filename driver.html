@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YourRide - Captain App</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -477,12 +480,12 @@
         <div class="w-top">
           <div>
             <div style="font-size: 11px; color: #67e8f9; font-weight: 800;">PREPAID SAAS WALLET (CLOUD SYNC)</div>
-            <div class="w-bal" id="capWalletBal">₹ 50.00</div>
+            <div class="w-bal" id="capWalletBal">₹ 120.00</div>
           </div>
           <div class="pass-badge" id="passStatusBadge">✅ ₹1/Day Pass Active</div>
         </div>
         <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 10px;">
-          💡 0% Commission! Customer se 100% Cash/UPI seedha aapka. Ride pick par ₹30 fee wallet se kat-ti hai.
+          💡 0% Commission! Customer se 100% Cash/UPI seedha aapka. Ride pick par <strong>₹3/KM</strong> wallet se kat-ti hai.
         </div>
         <div class="w-actions">
           <button class="btn-w btn-recharge" onclick="rechargeWallet()">+ RECHARGE WALLET</button>
@@ -676,6 +679,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const FIREBASE_DB_URL = "https://yourridelive-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const PER_KM_PICK_FEE = 3; // ₹3 per KM plan fee
 
     async function cloudGet(path) {
       try {
@@ -712,6 +716,11 @@
           body: JSON.stringify(data)
         });
       } catch (e) {}
+    }
+
+    function getRidePickFeeByKm(km) {
+      const dist = Math.max(0, Number(km) || 0);
+      return Math.round(dist * PER_KM_PICK_FEE);
     }
 
     /* ========================================================
@@ -768,9 +777,6 @@
     let capMap, capMarker, rideRouteLine;
     let selectedCapLevel = 0;
 
-    /* ========================================================
-       LIVE CLOUD WALLET SYNC + ₹100 LOW BALANCE COLOUR + DAILY ₹1 PASS
-       ======================================================== */
     function getTodayDateKey() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1485,7 +1491,10 @@
       if (capMap) { capMap.invalidateSize(); return; }
       const defaultCoords = [28.6852, 77.3396];
       capMap = L.map('captainMap').setView(defaultCoords, 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(capMap);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CARTO',
+        maxZoom: 19
+      }).addTo(capMap);
       capMarker = L.marker(defaultCoords).addTo(capMap).bindPopup("🚖 Aapki Live Location").openPopup();
     }
 
@@ -1596,6 +1605,7 @@
         const isHomeMatch = goHomeActive && capHomeLocation && !isOutstation;
         const cardClass = isOutstation ? 'outstation-ride-card' : (isHomeMatch ? 'home-route-match' : '');
         const osLabel = `${ride.outstationType || 'OUTSTATION'} • ${ride.outstationDays || 1} Day(s)`;
+        const dynamicPickFee = getRidePickFeeByKm(ride.distanceKm);
 
         box.innerHTML = `
           <div class="ride-req-card ${cardClass}">
@@ -1611,7 +1621,7 @@
             <div class="loc-row">📍 Pickup: ${ride.pickupAddress}</div>
             <div class="loc-row">🏁 Destination: ${ride.dropAddress}</div>
             <div class="ride-btn-row">
-              <button class="btn-accept-ride" style="${isOutstation ? 'background:#fbbf24; color:#0b1329;' : (isHomeMatch ? 'background:#e879f9; color:#2e1065;' : '')}" onclick="acceptLiveRide()">✅ ACCEPT RIDE (₹30 Wallet Fee)</button>
+              <button class="btn-accept-ride" style="${isOutstation ? 'background:#fbbf24; color:#0b1329;' : (isHomeMatch ? 'background:#e879f9; color:#2e1065;' : '')}" onclick="acceptLiveRide()">✅ ACCEPT RIDE (₹${dynamicPickFee} Wallet Fee)</button>
               <button class="btn-reject-ride" onclick="skipLiveRide()">Skip</button>
             </div>
           </div>`;
@@ -1643,10 +1653,13 @@
       if (!isHqApproved) { alert("⏳ HQ Approval pending hai."); return; }
       if (!passActive) { alert("Pehle ₹1/Day Pass activate karein!"); return; }
 
-      const ridePickFee = 30;
       await syncCaptainWalletFromCloud();
+      const currentRide = (await cloudGet('live_ride')) || currentCapRideObj || {};
+      const kmVal = Number(currentRide.distanceKm) || 0;
+      const ridePickFee = getRidePickFeeByKm(kmVal);
+
       if (walletBalance < ridePickFee) {
-        alert(`⚠️ Ride pick karne ke liye wallet mein kam se kam ₹${ridePickFee} balance hona chahiye. Kripya wallet recharge karein.`);
+        alert(`⚠️ ${kmVal} KM ki ride pick karne ke liye wallet mein kam se kam ₹${ridePickFee} (₹3/KM) balance hona chahiye. Kripya wallet recharge karein.`);
         return;
       }
 
@@ -1661,7 +1674,7 @@
         walletPickFeeDeducted: ridePickFee
       });
       checkIncomingRidesFromCloud();
-      alert(`✅ Ride Accept Ho Gayi! Wallet se ₹${ridePickFee} less ho gaye hain. Bacha balance: ₹${walletBalance.toFixed(2)}`);
+      alert(`✅ Ride Accept Ho Gayi (${kmVal} KM)! Wallet se ₹${ridePickFee} (₹3/KM) less ho gaye hain. Bacha balance: ₹${walletBalance.toFixed(2)}`);
     }
 
     async function skipLiveRide() {
@@ -1695,7 +1708,7 @@
       if (ride) {
         const kmVal = Number(ride.distanceKm) || 0;
         const totalFare = Number(ride.customerFare) || 0;
-        const bookingFees = Math.round(kmVal * 3);
+        const bookingFees = getRidePickFeeByKm(kmVal);
         const baseFarePart = Math.max(0, totalFare - bookingFees);
 
         await distribute4LevelBonus(ride.riderId || "YR-USER", kmVal);
@@ -1727,7 +1740,7 @@
     function openCapHistoryModal() {
       const hist = getCapHistory();
       document.getElementById('capHistoryList').innerHTML = hist.length === 0 ? '<div style="color:#94a3b8; font-size:12px;">Abhi koi completed trip nahi hai.</div>' : hist.map(r => {
-        const bFee = r.bookingFeePart !== undefined ? r.bookingFeePart : Math.round((Number(r.km) || 0) * 3);
+        const bFee = r.bookingFeePart !== undefined ? r.bookingFeePart : getRidePickFeeByKm(r.km);
         const fPart = r.basePart !== undefined ? r.basePart : Math.max(0, (Number(r.fare) || 0) - bFee);
         return `<div class="hist-item"><div style="display:flex; justify-content:space-between; align-items:center; font-weight:800; color:#38bdf8;"><span>#${r.rideId} (${r.km} KM)</span><span style="color:#4ade80; font-size:15px;">₹${r.fare}</span></div><div style="font-size:10px; color:#94a3b8; text-align:right; margin-bottom:2px;">${fPart}fare + ${bFee}booking fees = ${r.fare}</div><div style="font-size:10.5px; color:#94a3b8; margin-bottom:3px;">🕒 ${r.date}</div><div>📍 ${r.pickup} → 🏁 ${r.drop}</div></div>`;
       }).join('');
