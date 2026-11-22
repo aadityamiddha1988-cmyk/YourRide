@@ -968,6 +968,22 @@
       } catch (e) {}
     }
 
+    /* ========================================================
+       AI VOICE ANNOUNCEMENT ON RIDE COMPLETION
+       ======================================================== */
+    function speakThankYouYourCab() {
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance("Thank you for ride with YourCab");
+          utter.lang = 'en-IN';
+          utter.rate = 0.98;
+          utter.pitch = 1.05;
+          window.speechSynthesis.speak(utter);
+        }
+      } catch (e) {}
+    }
+
     let selectedCancelReason = "";
 
     function openCancelRideModal() {
@@ -1043,14 +1059,14 @@
       const responses = {
         fare: {
           q: "💰 Kiraya ya extra charge se judi samasya",
-          a: "YourRide mein koi hidden surge nahi hai. Agar normal safar se 15 min se zyada traffic delay hota hai tabhi ₹0.75/min judta hai, ya state border toll. Agar galat bill laga ho toh neeche message likh kar Ticket dabayein—HQ team 15 min mein check karegi."
+          a: "YourRide mein koi hidden surge nahi hai. Agar normal safar se 15 min se zyada extra time lagta hai tabhi ₹0.75/min judta hai, ya state border toll. Agar galat bill laga ho toh neeche message likh kar Ticket dabayein—HQ team 15 min mein check karegi."
         },
         captain: {
           q: "🚖 Captain late aa rahe hain ya call nahi utha rahe",
           a: "Aap Active Ride card par '📞 Masked Call' ya '💬 Message Captain' se bina number share kiye baat kar sakte hain. Agar cancel karni ho toh Active Ride card par '❌ CANCEL RIDE' dabakar option chunein."
         },
         referral: {
-          q: "🌳 Mera Referral Bonus ya Withdrawal kab aayega?",
+          q: "🌳 Mera Referral Income ya Withdrawal kab aayega?",
           a: "Jab aapki 4-Level team ka koi member ride complete karta hai, toh ₹0.50 se ₹0.05/KM bonus aapke wallet mein judta hai. ₹300 hote hi Side Menu → 'Request Payout' dabayein—24 ghante mein bank mein transfer ho jata hai."
         },
         safety: {
@@ -1836,20 +1852,28 @@
 
     function detectGPSLocation() {
       const input = document.getElementById('pickupInput');
-      if (!navigator.geolocation) { alert("GPS support nahi hai."); return; }
+      if (!navigator.geolocation) { alert("Is device par GPS support nahi hai."); return; }
+      const prevVal = input.value;
       input.value = "GPS location dhundh rahe hain...";
       navigator.geolocation.getCurrentPosition(async (pos) => {
-        pickupCoords = [pos.coords.latitude, pos.coords.longitude];
-        if (pickupMarker) map.removeLayer(pickupMarker);
-        pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Aapki Live Location").openPopup();
-        map.setView(pickupCoords, 15);
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        pickupCoords = [lat, lon];
+        if (pickupMarker && map) map.removeLayer(pickupMarker);
+        if (map) {
+          pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Aapki Live Location").openPopup();
+          map.setView(pickupCoords, 15);
+        }
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pickupCoords[0]}&lon=${pickupCoords[1]}`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const data = await res.json();
-          input.value = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${pickupCoords[0].toFixed(4)}, ${pickupCoords[1].toFixed(4)}`;
-        } catch { input.value = `${pickupCoords[0].toFixed(4)}, ${pickupCoords[1].toFixed(4)}`; }
-        evaluateLiveSurge(); if (dropCoords) calculateRoadRoute();
-      }, () => { input.value = "Shalimar Garden, Sahibabad"; });
+          input.value = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        } catch { input.value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
+        evaluateLiveSurge();
+        if (dropCoords) calculateRoadRoute();
+      }, (err) => {
+        input.value = prevVal || "Shalimar Garden, Sahibabad";
+        alert("⚠️ GPS location nahi mil paayi. Kripya Location/GPS ON karein aur permission Allow karein.");
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     function selectVehicleType(type) {
@@ -2104,6 +2128,9 @@
       activeLiveRideObj = null;
       localStorage.removeItem('yourride_trip_started_at');
       document.getElementById('activeRideCard').style.display = 'none';
+
+      // AI sound announcement on ride completion
+      speakThankYouYourCab();
       openRateRideModal(rideSnapshot, finalBill);
     }
 
@@ -2111,7 +2138,7 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
           window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Main YourRide se travel kar raha hu. Meri Live Location: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`)}`, '_blank');
-        }, () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Main YourRide verified cab se travel kar raha hu.')}`, '_blank'));
+        }, () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Main YourRide verified cab se travel kar raha hu.')}`, '_blank'), { enableHighAccuracy: true, timeout: 10000 });
       }
     }
 
@@ -2222,6 +2249,7 @@
       checkFirstTimeLogin();
       loadHqBroadcastsAndSlabs();
       initMap();
+      detectGPSLocation();
       evaluateLiveSurge();
       updateKycUI();
       updateBankUI();

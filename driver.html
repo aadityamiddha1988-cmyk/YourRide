@@ -88,14 +88,19 @@
     .btn-stop-home { background: #ef4444; color: #fff; border: none; padding: 5px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 900; cursor: pointer; white-space: nowrap; }
 
     /* Wallet & ₹1/Day Pass Card */
-    .wallet-card { background: linear-gradient(135deg, #0e3b43 0%, #0f172a 100%); border: 1.5px solid #06b6d4; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .wallet-card { background: linear-gradient(135deg, #0e3b43 0%, #0f172a 100%); border: 1.5px solid #06b6d4; border-radius: 12px; padding: 14px; margin-bottom: 12px; transition: all 0.25s ease; }
+    .wallet-card.low-balance { background: linear-gradient(135deg, #7f1d1d 0%, #1e1b4b 100%); border: 2px solid #ef4444; box-shadow: 0 0 18px rgba(239, 68, 68, 0.35); }
     .w-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .w-bal { font-size: 26px; font-weight: 900; color: #4ade80; }
+    .wallet-card.low-balance .w-bal { color: #fca5a5; }
+    .low-bal-alert-tag { display: none; background: #dc2626; color: #fff; font-size: 10.5px; font-weight: 900; padding: 5px 8px; border-radius: 6px; margin-bottom: 8px; text-align: center; }
+    .wallet-card.low-balance .low-bal-alert-tag { display: block; }
     .pass-badge { background: #059669; color: #fff; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 20px; }
     .pass-badge.expired { background: #dc2626; }
     .w-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .btn-w { padding: 10px; border-radius: 8px; border: none; font-size: 12px; font-weight: 900; cursor: pointer; }
     .btn-recharge { background: #06b6d4; color: #0b1329; }
+    .wallet-card.low-balance .btn-recharge { background: #fde047; color: #0b1329; }
     .btn-pass { background: #f59e0b; color: #0b1329; }
 
     /* Live Duty Toggle & Stats */
@@ -467,7 +472,8 @@
     <!-- MAIN CAPTAIN DASHBOARD -->
     <div id="captainDashboardSection" style="display: none;">
 
-      <div class="wallet-card">
+      <div class="wallet-card" id="capWalletCard">
+        <div class="low-bal-alert-tag" id="lowBalanceWarningBanner">⚠️ BALANCE ₹100 SE KAM HAI! Jaldi recharge karein warna ride booking ruk sakti hai.</div>
         <div class="w-top">
           <div>
             <div style="font-size: 11px; color: #67e8f9; font-weight: 800;">PREPAID SAAS WALLET (CLOUD SYNC)</div>
@@ -476,7 +482,7 @@
           <div class="pass-badge" id="passStatusBadge">✅ ₹1/Day Pass Active</div>
         </div>
         <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 10px;">
-          💡 0% Commission! Customer se 100% Cash/UPI seedha aapka. Har ride par ₹3/KM pool fee wallet se kat-ti hai.
+          💡 0% Commission! Customer se 100% Cash/UPI seedha aapka. Ride pick par ₹30 fee wallet se kat-ti hai.
         </div>
         <div class="w-actions">
           <button class="btn-w btn-recharge" onclick="rechargeWallet()">+ RECHARGE WALLET</button>
@@ -708,9 +714,54 @@
       } catch (e) {}
     }
 
+    /* ========================================================
+       RIDE ALERT BEEP SOUND (UNLOCKED ON USER GESTURE)
+       ======================================================== */
+    let audioCtx = null;
+    let lastBeepedRideId = null;
+
+    function unlockAudioContext() {
+      try {
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtx = new Ctx();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      } catch (e) {}
+    }
+
+    document.addEventListener('pointerdown', unlockAudioContext, { passive: true });
+    document.addEventListener('touchstart', unlockAudioContext, { passive: true });
+
+    function playRideBeep() {
+      try {
+        unlockAudioContext();
+        if (!audioCtx) return;
+
+        const playTone = (freq, startOffset, duration) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startOffset);
+          gain.gain.setValueAtTime(0.001, audioCtx.currentTime + startOffset);
+          gain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + startOffset + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startOffset + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + startOffset);
+          osc.stop(audioCtx.currentTime + startOffset + duration + 0.02);
+        };
+
+        playTone(920, 0, 0.18);
+        playTone(1180, 0.22, 0.22);
+      } catch (e) {}
+    }
+
     let isOnDuty = false;
     let isHqApproved = false;
-    let walletBalance = parseFloat(localStorage.getItem('yourride_cap_wallet') || '50');
+    let walletBalance = parseFloat(localStorage.getItem('yourride_cap_wallet') || '120');
     let passActive = localStorage.getItem('yourride_cap_pass') !== 'false';
     let capDocs = {};
     let capBankDocs = { capAadhaarFront: "", capAadhaarBack: "", capPanPhoto: "", capBankProof: "" };
@@ -718,8 +769,34 @@
     let selectedCapLevel = 0;
 
     /* ========================================================
-       LIVE CLOUD WALLET SYNC (HQ LEDGER TOP-UP + AUTO DEDUCT)
+       LIVE CLOUD WALLET SYNC + ₹100 LOW BALANCE COLOUR + DAILY ₹1 PASS
        ======================================================== */
+    function getTodayDateKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    async function runDailyFirstPassNotificationIfNeeded() {
+      const todayKey = getTodayDateKey();
+      const lastNotifiedDay = localStorage.getItem('yourride_daily_pass_notified_day');
+      if (lastNotifiedDay === todayKey) return;
+
+      localStorage.setItem('yourride_daily_pass_notified_day', todayKey);
+
+      if (walletBalance >= 1) {
+        await saveCaptainWalletToCloud(walletBalance - 1);
+        passActive = true;
+        localStorage.setItem('yourride_cap_pass', 'true');
+        updateWalletUI();
+        alert("🔔 Aaj Ka Pehla ₹1 Pass Notification\n\nAapke aaj ke pehle ₹1 Daily Pass ke liye wallet se ₹1 kat gaya hai.");
+      } else {
+        passActive = false;
+        localStorage.setItem('yourride_cap_pass', 'false');
+        updateWalletUI();
+        alert("⚠️ Aaj Ka Pehla ₹1 Pass Alert\n\nAaj ke ₹1 Daily Pass ke liye wallet mein balance kam hai. Kripya wallet recharge karein.");
+      }
+    }
+
     async function syncCaptainWalletFromCloud() {
       const capId = localStorage.getItem('yourride_captain_id');
       if (!capId) return;
@@ -918,6 +995,7 @@
         docTitle.innerText = '✅🔒 Cab & KYC Verified & Locked';
         docSub.innerText = 'HQ Approved • Permanent Read-Only Lock';
         if (!isOnDuty) { isOnDuty = true; toggleDutyUIOnly(); }
+        await runDailyFirstPassNotificationIfNeeded();
       } else if (capCloud.status === 'SUSPENDED') {
         isHqApproved = false; isOnDuty = false; toggleDutyUIOnly();
         lockCard.style.display = 'block'; lockCard.style.borderColor = '#ef4444';
@@ -1028,7 +1106,10 @@
 
     function relocateCaptainGPS() {
       const statusTxt = document.getElementById('mapStatusText');
-      if (!navigator.geolocation) return;
+      if (!navigator.geolocation) {
+        statusTxt.innerText = "⚠️ Is device par GPS support nahi hai.";
+        return;
+      }
       statusTxt.innerText = "📡 Live GPS location dhundh rahe hain...";
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
@@ -1047,7 +1128,9 @@
         document.getElementById('gmapsNavLink').href = `https://www.google.com/maps?q=${lat},${lon}`;
         const capId = localStorage.getItem('yourride_captain_id');
         if (capId) await cloudPatch(`captains/${capId}`, { lat, lon, area: areaLabel });
-      }, () => { statusTxt.innerText = "⚠️ GPS Permission denied."; }, { enableHighAccuracy: true, timeout: 10000 });
+      }, () => {
+        statusTxt.innerText = "⚠️ GPS Permission denied / Location OFF.";
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     let goHomeActive = localStorage.getItem('yourride_cap_go_home_active') === 'true';
@@ -1096,7 +1179,7 @@
         capHomeLocation = { address: addr, lat, lon };
         localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation));
         updateGoHomeUI();
-      });
+      }, () => { inp.value = ""; alert("⚠️ GPS se ghar ki location nahi mil paayi."); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     function saveCaptainHomeLocation() {
@@ -1351,7 +1434,7 @@
       }));
 
       await registerInGlobalNetwork(myCapId, name, "Captain", sponsorId || "HQ", {
-        phone, vehNum, vehType: cat, area, km: 0, wallet: 50,
+        phone, vehNum, vehType: cat, area, km: 0, wallet: 120,
         status: "PENDING_HQ", docsLocked: true,
         lat: 28.6852, lon: 77.3396,
         expiryDates: { rc: expRc, dl: expDl, ins: expIns, fit: expFit },
@@ -1408,6 +1491,11 @@
 
     function updateWalletUI() {
       document.getElementById('capWalletBal').innerText = `₹ ${walletBalance.toFixed(2)}`;
+      const walletCard = document.getElementById('capWalletCard');
+      if (walletCard) {
+        walletCard.classList.toggle('low-balance', walletBalance < 100);
+      }
+
       const badge = document.getElementById('passStatusBadge');
       if (passActive && walletBalance >= 1) { badge.className = 'pass-badge'; badge.innerText = '✅ ₹1/Day Pass Active'; }
       else { badge.className = 'pass-badge expired'; badge.innerText = '⚠️ Pass Inactive'; }
@@ -1425,6 +1513,7 @@
       if (walletBalance < 1) { alert("Insufficient balance! HQ Ledger se wallet recharge karwayein."); return; }
       passActive = true;
       localStorage.setItem('yourride_cap_pass', 'true');
+      localStorage.setItem('yourride_daily_pass_notified_day', getTodayDateKey());
       await saveCaptainWalletToCloud(walletBalance - 1);
       alert("✅ Aaj ka ₹1/Day SaaS Pass activate ho gaya hai!");
     }
@@ -1442,6 +1531,7 @@
     }
 
     async function toggleDuty() {
+      unlockAudioContext();
       if (!isHqApproved) {
         alert("⏳ Aapke documents abhi Company HQ ke paas verification ke liye pending hain.");
         checkCaptainHqApprovalFromCloud();
@@ -1451,6 +1541,7 @@
       toggleDutyUIOnly();
       const capId = localStorage.getItem('yourride_captain_id');
       if (capId) await cloudPatch(`captains/${capId}`, { status: isOnDuty ? 'ACTIVE' : 'OFFLINE' });
+      if (isOnDuty) await runDailyFirstPassNotificationIfNeeded();
       checkIncomingRidesFromCloud();
     }
 
@@ -1460,6 +1551,7 @@
       const ride = await cloudGet('live_ride');
       if (!ride || !ride.rideId) {
         currentCapRideObj = null;
+        lastBeepedRideId = null;
         box.innerHTML = goHomeActive && capHomeLocation
           ? `<div class="card" style="text-align:center; color:#e9d5ff; border-color:#a855f7; font-size:12.5px;">🏠 <strong>Go Home Mode:</strong> ${capHomeLocation.address} ke side ki rides dhundh rahe hain...</div>`
           : `<div class="card" style="text-align:center; color:#94a3b8; font-size:12.5px;">🔍 Live Cloud par Local & Outstation rides ka intezar kar rahe hain...</div>`;
@@ -1475,6 +1567,11 @@
           box.innerHTML = `<div class="card" style="text-align:center; color:#d8b4fe; border-color:#7e22ce; font-size:12px;">🏠 <strong>Go Home Filter Active:</strong> Ek doosri side ki ride skip ki gayi. Ghar (${capHomeLocation.address}) ke side ki ride ka intezar hai...</div>`;
           return;
         }
+      }
+
+      if (ride.status === 'PENDING' && lastBeepedRideId !== ride.rideId) {
+        lastBeepedRideId = ride.rideId;
+        playRideBeep();
       }
 
       if (ride.pickupCoords && capMap) {
@@ -1514,7 +1611,7 @@
             <div class="loc-row">📍 Pickup: ${ride.pickupAddress}</div>
             <div class="loc-row">🏁 Destination: ${ride.dropAddress}</div>
             <div class="ride-btn-row">
-              <button class="btn-accept-ride" style="${isOutstation ? 'background:#fbbf24; color:#0b1329;' : (isHomeMatch ? 'background:#e879f9; color:#2e1065;' : '')}" onclick="acceptLiveRide()">✅ ACCEPT RIDE (100% CASH/UPI)</button>
+              <button class="btn-accept-ride" style="${isOutstation ? 'background:#fbbf24; color:#0b1329;' : (isHomeMatch ? 'background:#e879f9; color:#2e1065;' : '')}" onclick="acceptLiveRide()">✅ ACCEPT RIDE (₹30 Wallet Fee)</button>
               <button class="btn-reject-ride" onclick="skipLiveRide()">Skip</button>
             </div>
           </div>`;
@@ -1542,21 +1639,35 @@
     }
 
     async function acceptLiveRide() {
+      unlockAudioContext();
       if (!isHqApproved) { alert("⏳ HQ Approval pending hai."); return; }
       if (!passActive) { alert("Pehle ₹1/Day Pass activate karein!"); return; }
+
+      const ridePickFee = 30;
+      await syncCaptainWalletFromCloud();
+      if (walletBalance < ridePickFee) {
+        alert(`⚠️ Ride pick karne ke liye wallet mein kam se kam ₹${ridePickFee} balance hona chahiye. Kripya wallet recharge karein.`);
+        return;
+      }
+
+      await saveCaptainWalletToCloud(walletBalance - ridePickFee);
+
       const saved = JSON.parse(localStorage.getItem('yourride_captain_docs') || '{}');
       await cloudPatch('live_ride', {
         status: 'ACCEPTED',
         captainId: localStorage.getItem('yourride_captain_id') || 'CAP-101',
         captainName: localStorage.getItem('yourride_captain_name') || 'Captain',
-        captainVeh: saved.vehNum || 'Yellow Plate Cab'
+        captainVeh: saved.vehNum || 'Yellow Plate Cab',
+        walletPickFeeDeducted: ridePickFee
       });
       checkIncomingRidesFromCloud();
+      alert(`✅ Ride Accept Ho Gayi! Wallet se ₹${ridePickFee} less ho gaye hain. Bacha balance: ₹${walletBalance.toFixed(2)}`);
     }
 
     async function skipLiveRide() {
       if (confirm("Kya aap is ride request ko skip karna chahte hain?")) {
         await cloudSet('live_ride', null);
+        lastBeepedRideId = null;
         checkIncomingRidesFromCloud();
       }
     }
@@ -1587,9 +1698,6 @@
         const bookingFees = Math.round(kmVal * 3);
         const baseFarePart = Math.max(0, totalFare - bookingFees);
 
-        // Auto-deduct ₹3/KM pool fee from Captain's SaaS Wallet
-        await saveCaptainWalletToCloud(walletBalance - bookingFees);
-
         await distribute4LevelBonus(ride.riderId || "YR-USER", kmVal);
         const myCapId = localStorage.getItem('yourride_captain_id');
         if (myCapId) {
@@ -1610,6 +1718,7 @@
       }
       await cloudSet('live_ride', null);
       currentCapRideObj = null;
+      lastBeepedRideId = null;
       checkIncomingRidesFromCloud();
     }
 

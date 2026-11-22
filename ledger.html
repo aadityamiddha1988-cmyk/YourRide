@@ -141,7 +141,7 @@
         <div class="kpi-card">
           <div class="kpi-lbl">Company Gross Revenue</div>
           <div class="kpi-val" style="color:#4ade80;" id="kpiGrossRev">₹ 0</div>
-          <div class="kpi-sub">₹1/Day Pass + Pool Fee</div>
+          <div class="kpi-sub">₹1/Day Pass + Ride Fee</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-lbl">Net Company Profit</div>
@@ -166,9 +166,7 @@
       </div>
     </div>
 
-    <!-- =========================================================
-         TAB 2: DIRECT WALLET RECHARGE / TOP-UP BY ID (CAPTAIN & RIDER)
-         ========================================================= -->
+    <!-- TAB 2: DIRECT WALLET RECHARGE / TOP-UP BY ID -->
     <div class="tab-section" id="tab-wallettopup">
       <div class="card" style="border-color:#10b981;">
         <div class="card-title" style="color:#4ade80;">💳 Direct Wallet Top-Up (By User ID)</div>
@@ -435,9 +433,6 @@
       renderWalletTopupHistory();
     }
 
-    /* ========================================================
-       DIRECT WALLET TOP-UP FROM LEDGER BY ID (CAPTAIN & RIDER)
-       ======================================================== */
     function populateWalletUserDropdown() {
       const sel = document.getElementById('walletUserDropdown');
       if (!sel) return;
@@ -559,9 +554,6 @@
         </div>`).join('');
     }
 
-    /* ========================================================
-       CUSTOMER IVR SUPPORT TICKETS IN HQ LEDGER
-       ======================================================== */
     async function renderSupportTickets() {
       const ticketsObj = await cloudGet('support_tickets') || {};
       const list = Object.entries(ticketsObj).map(([k, v]) => ({ key: k, ...v })).reverse();
