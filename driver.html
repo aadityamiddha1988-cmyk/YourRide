@@ -1113,10 +1113,9 @@
     function relocateCaptainGPS() {
       const statusTxt = document.getElementById('mapStatusText');
       if (!navigator.geolocation) {
-        statusTxt.innerText = "⚠️ Is device par GPS support nahi hai.";
+        statusTxt.innerText = "📍 Zone: Shalimar Garden / NCR";
         return;
       }
-      statusTxt.innerText = "📡 Live GPS location dhundh rahe hain...";
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         if (capMap) {
@@ -1135,8 +1134,8 @@
         const capId = localStorage.getItem('yourride_captain_id');
         if (capId) await cloudPatch(`captains/${capId}`, { lat, lon, area: areaLabel });
       }, () => {
-        statusTxt.innerText = "⚠️ GPS Permission denied / Location OFF.";
-      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+        statusTxt.innerText = "📍 Zone: Shalimar Garden, Sahibabad";
+      }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
     }
 
     let goHomeActive = localStorage.getItem('yourride_cap_go_home_active') === 'true';
@@ -1172,7 +1171,6 @@
     function setCaptainHomeFromGPS() {
       if (!navigator.geolocation) return;
       const inp = document.getElementById('capHomeAddressInput');
-      inp.value = "GPS se ghar ki location le rahe hain...";
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         let addr = `Home GPS (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
@@ -1185,7 +1183,9 @@
         capHomeLocation = { address: addr, lat, lon };
         localStorage.setItem('yourride_cap_home_loc', JSON.stringify(capHomeLocation));
         updateGoHomeUI();
-      }, () => { inp.value = ""; alert("⚠️ GPS se ghar ki location nahi mil paayi."); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+      }, () => {
+        if (!inp.value) inp.value = "Shalimar Garden, Sahibabad";
+      }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
     }
 
     function saveCaptainHomeLocation() {
@@ -1491,8 +1491,8 @@
       if (capMap) { capMap.invalidateSize(); return; }
       const defaultCoords = [28.6852, 77.3396];
       capMap = L.map('captainMap').setView(defaultCoords, 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO',
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri',
         maxZoom: 19
       }).addTo(capMap);
       capMarker = L.marker(defaultCoords).addTo(capMap).bindPopup("🚖 Aapki Live Location").openPopup();

@@ -1677,8 +1677,8 @@
 
     function initMap() {
       map = L.map('rideMap').setView(pickupCoords, 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO',
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri',
         maxZoom: 19
       }).addTo(map);
       pickupMarker = L.marker(pickupCoords).addTo(map).bindPopup("📍 Pickup: Shalimar Garden").openPopup();
@@ -1859,9 +1859,8 @@
 
     function detectGPSLocation() {
       const input = document.getElementById('pickupInput');
-      if (!navigator.geolocation) { alert("Is device par GPS support nahi hai."); return; }
-      const prevVal = input.value;
-      input.value = "GPS location dhundh rahe hain...";
+      if (!navigator.geolocation) return;
+
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         pickupCoords = [lat, lon];
@@ -1874,13 +1873,16 @@
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const data = await res.json();
           input.value = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-        } catch { input.value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
+        } catch {
+          input.value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        }
         evaluateLiveSurge();
         if (dropCoords) calculateRoadRoute();
       }, () => {
-        input.value = prevVal || "Shalimar Garden, Sahibabad";
-        alert("⚠️ GPS location nahi mil paayi. Kripya Location/GPS ON karein aur permission Allow karein.");
-      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+        if (!input.value || input.value.includes("dhundh rahe")) {
+          input.value = "Shalimar Garden, Sahibabad";
+        }
+      }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
     }
 
     function selectVehicleType(type) {
